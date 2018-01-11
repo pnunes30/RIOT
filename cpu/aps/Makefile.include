@@ -1,0 +1,18 @@
+#include $(RIOTCPU)/efm32/efm32-info.mk
+
+export CPU_ARCH = aps
+export CPU_FAM = aps
+
+# the em_device.h header requires a global define with the cpu model
+#export CFLAGS += -D$(shell echo $(CPU_MODEL) | tr 'a-z' 'A-Z')
+
+# include common periph module
+USEMODULE += periph_common
+
+# include vendor device headers
+INCLUDES += -I$(RIOTCPU)/aps/include/
+
+export LINKFLAGS += -L$(RIOTCPU)/aps/ldscripts
+LINKER_SCRIPT = elf32aps.ld
+
+include $(RIOTMAKE)/arch/aps.inc.mk

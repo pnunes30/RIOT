@@ -1,0 +1,7 @@
+## the cpu to build for
+export CPU = aps
+export CPU_MODEL = aps
+
+# flasher configuration
+
+INCLUDES += -I$(RIOTBOARD)/$(BOARD)/drivers/include
