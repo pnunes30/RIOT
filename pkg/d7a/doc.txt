@@ -1,0 +1,9 @@
+/**
+ * @defgroup pkg_d7a   D7A network stack
+ * @ingroup  pkg
+ * @ingroup  net
+ * @brief    Provides a RIOT adaption of the Dash7 Alliance protocol stack
+ * @see      https://github.com/MOSAIC-LoPoW/dash7-ap-open-source-stack
+ * @note     Currently there's only support for @ref drivers_sx127xx.
+ *           There's a work in progress to support the Cortus SoC radio driver
+ */

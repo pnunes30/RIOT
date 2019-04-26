@@ -1,0 +1,344 @@
+From 903e0eb704e026b75aa188009577ac890ace0542 Mon Sep 17 00:00:00 2001
+From: Philippe Nunes <philippe.nunes@cortus.com>
+Date: Fri, 22 Feb 2019 12:44:53 +0100
+Subject: [PATCH] Fix warnings
+
+---
+ stack/framework/hal/inc/hwsystem.h |  4 ++--
+ stack/framework/hal/inc/hwtimer.h  |  2 +-
+ stack/framework/inc/fs.h           |  2 +-
+ stack/framework/inc/log.h          |  2 +-
+ stack/framework/inc/random.h       |  2 +-
+ stack/modules/d7ap/d7anp.c         |  6 +++++-
+ stack/modules/d7ap/d7ap.c          | 12 +++++++++---
+ stack/modules/d7ap/d7asp.c         |  2 +-
+ stack/modules/d7ap/d7atp.c         |  5 ++++-
+ stack/modules/d7ap/dll.c           | 30 +++++++++++++++++++++++-------
+ stack/modules/d7ap/dll.h           |  7 ++++---
+ 11 files changed, 52 insertions(+), 22 deletions(-)
+
+diff --git a/stack/framework/hal/inc/hwsystem.h b/stack/framework/hal/inc/hwsystem.h
+index d14eff1..8994712 100644
+--- a/stack/framework/hal/inc/hwsystem.h
++++ b/stack/framework/hal/inc/hwsystem.h
+@@ -57,12 +57,12 @@ __LINK_C void hw_enter_lowpower_mode(uint8_t mode);
+ /** \brief Deinitializes all pheriperals before going to low power mode.
+  * This is a weak symbol which can be implemented in the platform if you want to use this
+  */
+-__LINK_C __attribute__((weak)) void hw_deinit_pheriperals();
++__LINK_C __attribute__((weak)) void hw_deinit_pheriperals(void);
+ 
+ /** \brief Reinitializes all pheriperals after resuming from low power mode.
+  * This is a weak symbol which can be implemented in the platform if you want to use this
+  */
+-__LINK_C __attribute__((weak)) void hw_reinit_pheriperals();
++__LINK_C __attribute__((weak)) void hw_reinit_pheriperals(void);
+ 
+ /*! \brief Get a 64-bit identifier that is unique to the device on which this function is called.
+  *
+diff --git a/stack/framework/hal/inc/hwtimer.h b/stack/framework/hal/inc/hwtimer.h
+index 243a594..2831ac7 100644
+--- a/stack/framework/hal/inc/hwtimer.h
++++ b/stack/framework/hal/inc/hwtimer.h
+@@ -54,7 +54,7 @@ typedef struct {
+ /*! \brief Timer callback definition
+  * 
+  */
+-typedef void (*timer_callback_t)();
++typedef void (*timer_callback_t)(void);
+ 
+ /*! \brief Type definition of the type used to identify timers;
+  * 
+diff --git a/stack/framework/inc/fs.h b/stack/framework/inc/fs.h
+index 56c179a..971b1c4 100644
+--- a/stack/framework/inc/fs.h
++++ b/stack/framework/inc/fs.h
+@@ -115,7 +115,7 @@ alp_status_codes_t fs_write_file_header(uint8_t file_id, fs_file_header_t* file_
+ void fs_read_uid(uint8_t* buffer);
+ void fs_read_vid(uint8_t* buffer);
+ void fs_write_vid(uint8_t* buffer);
+-uint8_t fs_read_dll_conf_active_access_class();
++uint8_t fs_read_dll_conf_active_access_class(void);
+ void fs_write_dll_conf_active_access_class(uint8_t access_class);
+ alp_status_codes_t fs_read_nwl_security_key(uint8_t* key);
+ alp_status_codes_t fs_read_nwl_security(dae_nwl_security_t *nwl_security);
+diff --git a/stack/framework/inc/log.h b/stack/framework/inc/log.h
+index 391ef5b..78ce7cd 100644
+--- a/stack/framework/inc/log.h
++++ b/stack/framework/inc/log.h
+@@ -57,7 +57,7 @@ typedef enum
+ #ifdef FRAMEWORK_LOG_ENABLED
+ 
+ /*! \brief Reset the log counter back to zero */
+-__LINK_C void log_counter_reset();
++__LINK_C void log_counter_reset(void);
+ 
+ /*! \brief Log a string which can be optionally formatted using printf() style
+  * format specifiers. */
+diff --git a/stack/framework/inc/random.h b/stack/framework/inc/random.h
+index 5bc2ab0..19011bc 100644
+--- a/stack/framework/inc/random.h
++++ b/stack/framework/inc/random.h
+@@ -38,7 +38,7 @@
+  *
+  * \return uint32_t	a semi-random number between 0 and 2^32-1
+  */
+-__LINK_C uint32_t get_rnd();
++__LINK_C uint32_t get_rnd(void);
+ 
+ /*! \brief Set the seed for the random nuber generator
+  *
+diff --git a/stack/modules/d7ap/d7anp.c b/stack/modules/d7ap/d7anp.c
+index df01e50..e9cb50b 100644
+--- a/stack/modules/d7ap/d7anp.c
++++ b/stack/modules/d7ap/d7anp.c
+@@ -127,6 +127,8 @@ static void switch_state(state_t next_state)
+ 
+ static void foreground_scan_expired(void *arg)
+ {
++    (void)arg;
++
+     // the FG scan expiration may also happen while Tx is busy (d7anp_state = D7ANP_STATE_TRANSMIT) // TODO validate
+     assert(d7anp_state == D7ANP_STATE_FOREGROUND_SCAN || d7anp_state == D7ANP_STATE_TRANSMIT);
+     DPRINT("Foreground scan expired @%i", timer_get_counter_value());
+@@ -170,7 +172,6 @@ void d7anp_set_foreground_scan_timeout(timer_tick_t timeout)
+ {
+     DPRINT("Set FG scan timeout = %i", timeout);
+     assert(d7anp_state == D7ANP_STATE_IDLE || d7anp_state == D7ANP_STATE_FOREGROUND_SCAN);
+-    assert(timeout >= 0);
+ 
+     fg_scan_timeout_ticks = timeout;
+ }
+@@ -195,6 +196,8 @@ void d7anp_stop_foreground_scan()
+ 
+ void start_foreground_scan_after_D7AAdvP(void *arg)
+ {
++    (void)arg;
++
+     DPRINT("start_foreground_scan_after_D7AAdvP");
+     fg_scan_timeout_ticks = FG_SCAN_TIMEOUT;
+     d7anp_start_foreground_scan();
+@@ -305,6 +308,7 @@ security:
+ 
+     switch_state(D7ANP_STATE_TRANSMIT);
+     dll_tx_frame(packet);
++    return SUCCESS;
+ }
+ 
+ static void schedule_foreground_scan_after_D7AAdvP(timer_tick_t eta)
+diff --git a/stack/modules/d7ap/d7ap.c b/stack/modules/d7ap/d7ap.c
+index 2de6127..9f253b4 100644
+--- a/stack/modules/d7ap/d7ap.c
++++ b/stack/modules/d7ap/d7ap.c
+@@ -23,6 +23,7 @@
+ 
+ #include "fs.h"
+ #include "phy.h"
++#include "hwradio.h"
+ #include "errors.h"
+ #include "debug.h"
+ #include "dae.h"
+@@ -42,7 +43,7 @@ dae_access_profile_t default_access_profiles[DEFAULT_ACCESS_PROFILES_COUNT] = {
+         // AC used for pushing data to the GW, continuous FG scan
+         .channel_header = {
+             .ch_coding = PHY_CODING_FEC_PN9,
+-            .ch_class = PHY_CLASS_LO_RATE,
++            .ch_class = PHY_CLASS_NORMAL_RATE,
+             .ch_freq_band = PHY_BAND_868
+         },
+         .subprofiles[0] = {
+@@ -139,7 +140,12 @@ uint8_t d7ap_register(d7ap_resource_desc_t* desc)
+     return (registered_client_nb-1);
+ }
+ 
+-//TODO do we need also an API to unregister a client?
++//TODO to unregister, better to introduce a linked list for the registered clients
++/*void d7ap_unregister(uint8_t client_id)
++{
++    assert(client_id < registered_client_nb);
++
++}*/
+ 
+ /**
+  * @brief   Gets the device address UID/VID
+@@ -244,7 +250,7 @@ error_t d7ap_send(uint8_t client_id, d7ap_session_config_t* config, uint8_t* pay
+  */
+ void d7ap_set_tx_power(uint8_t power)
+ {
+-
++    hw_radio_set_tx_power(power);
+ }
+ 
+ 
+diff --git a/stack/modules/d7ap/d7asp.c b/stack/modules/d7ap/d7asp.c
+index 675e8e7..46cfa34 100644
+--- a/stack/modules/d7ap/d7asp.c
++++ b/stack/modules/d7ap/d7asp.c
+@@ -399,7 +399,7 @@ uint8_t d7asp_master_session_create(d7ap_session_config_t* d7asp_master_session_
+         // Requests can be pushed in the FIFO by upper layer anytime
+         if ((current_master_session.config.addressee.access_class == d7asp_master_session_config->addressee.access_class) &&
+             (current_master_session.config.addressee.ctrl.raw == d7asp_master_session_config->addressee.ctrl.raw) &&
+-            memcmp(current_master_session.config.addressee.id, d7asp_master_session_config->addressee.id, d7ap_addressee_id_length(d7asp_master_session_config->addressee.ctrl.id_type)));
++            memcmp(current_master_session.config.addressee.id, d7asp_master_session_config->addressee.id, d7ap_addressee_id_length(d7asp_master_session_config->addressee.ctrl.id_type)))
+         return current_master_session.token;
+ 
+         // TODO create a pending session or a dormant session if TO (DORM_TIMER) !=0
+diff --git a/stack/modules/d7ap/d7atp.c b/stack/modules/d7ap/d7atp.c
+index dd8e26b..f9099ca 100644
+--- a/stack/modules/d7ap/d7atp.c
++++ b/stack/modules/d7ap/d7atp.c
+@@ -288,6 +288,10 @@ void d7atp_stop()
+ error_t d7atp_send_request(uint8_t dialog_id, uint8_t transaction_id, bool is_last_transaction,
+                         packet_t* packet, d7ap_session_qos_t* qos_settings, uint8_t listen_timeout, uint8_t expected_response_length)
+ {
++    // unused parameters
++    (void)is_last_transaction;
++    (void)listen_timeout;
++
+     /* check that we are not initiating a different dialog if a dialog is still ongoing */
+     if (current_dialog_id)
+     {
+@@ -317,7 +321,6 @@ error_t d7atp_send_request(uint8_t dialog_id, uint8_t transaction_id, bool is_la
+     }
+ 
+     DPRINT("Start dialog Id=%i transID=%i on AC=%x, expected resp len=%i", dialog_id, transaction_id, access_class, expected_response_length);
+-    uint8_t slave_listen_timeout = listen_timeout;
+ 
+     bool ack_requested = true;
+     if ((qos_settings->qos_resp_mode == SESSION_RESP_MODE_NO || qos_settings->qos_resp_mode == SESSION_RESP_MODE_NO_RPT)
+diff --git a/stack/modules/d7ap/dll.c b/stack/modules/d7ap/dll.c
+index 8b6b6c9..a107447 100644
+--- a/stack/modules/d7ap/dll.c
++++ b/stack/modules/d7ap/dll.c
+@@ -344,6 +344,12 @@ void dll_signal_packet_received(packet_t* packet)
+     // TODO check if more received packets are pending
+ }
+ 
++static void packet_received(void *arg)
++{
++    dll_signal_packet_received((packet_t*)arg);
++
++}
++
+ void dll_signal_packet_transmitted(packet_t* packet)
+ {
+     assert(dll_state == DLL_STATE_TX_FOREGROUND);
+@@ -464,6 +470,7 @@ static void cca_rssi_valid(int16_t cur_rssi)
+ 
+ static void execute_cca(void *arg)
+ {
++    (void)arg;
+     DPRINT("execute_cca @%i", timer_get_counter_value());
+ 
+     assert(dll_state == DLL_STATE_CCA1 || dll_state == DLL_STATE_CCA2);
+@@ -473,6 +480,7 @@ static void execute_cca(void *arg)
+ 
+ static void execute_csma_ca(void *arg)
+ {
++    (void)arg;
+     // TODO select Channel at front of the channel queue
+ 
+     /*
+@@ -676,8 +684,9 @@ static void execute_csma_ca(void *arg)
+     }
+ }
+ 
+-void dll_execute_scan_automation(void *arg)
++void dll_execute_scan_automation()
+ {
++
+     // first make sure the background scan timer is stopped and the pending task canceled
+     // since they might not be necessary for current active class anymore
+     timer_cancel_event(&dll_background_scan_timer);
+@@ -758,8 +767,15 @@ void dll_execute_scan_automation(void *arg)
+     current_eirp = current_access_profile.subbands[0].eirp;
+ }
+ 
++static void execute_scan_automation(void *arg)
++{
++    (void)arg;
++    dll_execute_scan_automation();
++}
++
+ static void conf_file_changed_callback(uint8_t file_id)
+ {
++    (void)file_id;
+     DPRINT("DLL config file changed");
+     uint8_t scan_access_class = fs_read_dll_conf_active_access_class();
+ 
+@@ -772,7 +788,7 @@ static void conf_file_changed_callback(uint8_t file_id)
+         // when doing scan automation restart this
+         if (dll_state == DLL_STATE_IDLE || dll_state == DLL_STATE_SCAN_AUTOMATION)
+         {
+-            dll_execute_scan_automation(NULL);
++            dll_execute_scan_automation();
+         }
+     }
+ }
+@@ -789,7 +805,7 @@ static void access_profile_file_changed_callback(uint8_t file_id)
+         // when we are idle switch to scan automation now as well, in case the new AP enables scanning
+         if (dll_state == DLL_STATE_IDLE || dll_state == DLL_STATE_SCAN_AUTOMATION)
+         {
+-            dll_execute_scan_automation(NULL);
++            dll_execute_scan_automation();
+         }
+     }
+ }
+@@ -797,7 +813,7 @@ static void access_profile_file_changed_callback(uint8_t file_id)
+ void dll_notify_dialog_terminated()
+ {
+     DPRINT("Since the dialog is terminated, we can resume the automation scan");
+-    dll_execute_scan_automation(NULL);
++    dll_execute_scan_automation();
+ }
+ 
+ void dll_init()
+@@ -809,10 +825,10 @@ void dll_init()
+     // Initialize timers
+     timer_init_event(&dll_cca_timer, &execute_cca);
+     timer_init_event(&dll_csma_timer, &execute_csma_ca);
+-    timer_init_event(&dll_scan_automation_timer, &dll_execute_scan_automation);
++    timer_init_event(&dll_scan_automation_timer, &execute_scan_automation);
+     timer_init_event(&dll_background_scan_timer, &start_background_scan);
+     timer_init_event(&dll_guard_period_expiration_timer, &guard_period_expiration);
+-    timer_init_event(&dll_process_received_packet_timer, &dll_signal_packet_received);
++    timer_init_event(&dll_process_received_packet_timer, &packet_received);
+ 
+     phy_init();
+ 
+@@ -834,7 +850,7 @@ void dll_init()
+ 
+     // Start immediately the scan automation
+     guarded_channel = false;
+-    dll_execute_scan_automation(NULL);
++    dll_execute_scan_automation();
+ }
+ 
+ void dll_stop()
+diff --git a/stack/modules/d7ap/dll.h b/stack/modules/d7ap/dll.h
+index bc0bcc6..49f964d 100644
+--- a/stack/modules/d7ap/dll.h
++++ b/stack/modules/d7ap/dll.h
+@@ -71,15 +71,16 @@ void dll_stop();
+ void dll_tx_frame(packet_t* packet);
+ void dll_start_foreground_scan();
+ void dll_stop_foreground_scan();
++void dll_stop_background_scan();
+ void dll_execute_scan_automation();
+-void dll_notify_dialog_terminated();
++
+ uint8_t dll_assemble_packet_header(packet_t* packet, uint8_t* data_ptr);
+ uint8_t dll_assemble_packet_header_bg(packet_t* packet, uint8_t* data_ptr);
+ bool dll_disassemble_packet_header(packet_t* packet, uint8_t* data_idx);
+-uint16_t dll_calculate_tx_duration(phy_channel_class_t channel_class, phy_coding_t ch_coding, uint8_t packet_length);
+-void dll_stop_background_scan();
++
+ void dll_signal_packet_transmitted(packet_t* packet);
+ void dll_signal_packet_received(packet_t* packet);
++void dll_notify_dialog_terminated();
+ 
+ #endif //OSS_7_DLL_H
+ 
+-- 
+2.7.4
+

@@ -1,0 +1,332 @@
+From 9643059dbb804ac8fdde7808c5e1fa5b76cafdd6 Mon Sep 17 00:00:00 2001
+From: Philippe Nunes <philippe.nunes@cortus.com>
+Date: Wed, 1 Aug 2018 12:56:09 +0200
+Subject: [PATCH 1/3] Remove auto generated headers dependencies
+
+To build only the D7A module, we need to remove in the D7A module and
+in the framework headers all the includes of headers generated during the
+framework build (platform_defs.h, hal_defs.h, framework_defs.h).
+Alternatively, such auto generated headers should be included directly
+in the framework implementation files.
+---
+ stack/framework/components/cli/cli.c                     |  3 ++-
+ stack/framework/components/console/console.c             |  3 ++-
+ stack/framework/components/log/log.c                     | 13 ++++++-------
+ stack/framework/components/shell/shell.c                 |  3 +--
+ stack/framework/components/timer/timer.c                 |  7 ++++---
+ stack/framework/framework_bootstrap.c                    |  2 ++
+ stack/framework/hal/chips/netdev_driver/inc/net/netopt.h |  2 --
+ stack/framework/hal/inc/hwdebug.h                        |  1 -
+ stack/framework/hal/inc/hwradio.h                        |  2 --
+ stack/framework/inc/console.h                            |  1 -
+ stack/framework/inc/dae.h                                |  5 ++++-
+ stack/framework/inc/debug.h                              |  1 -
+ stack/framework/inc/fs.h                                 |  8 ++++++++
+ stack/framework/inc/log.h                                |  1 -
+ stack/framework/inc/shell.h                              |  2 --
+ stack/framework/inc/timer.h                              |  6 +++++-
+ stack/modules/d7ap/d7ap_stack.c                          |  2 --
+ stack/modules/d7ap/phy.h                                 |  2 --
+ 18 files changed, 34 insertions(+), 30 deletions(-)
+
+diff --git a/stack/framework/components/cli/cli.c b/stack/framework/components/cli/cli.c
+index 68824f0..72b8078 100644
+--- a/stack/framework/components/cli/cli.c
++++ b/stack/framework/components/cli/cli.c
+@@ -25,8 +25,9 @@
+ #include <stdbool.h>
+ #include <stdio.h>
+ 
+-#include "fifo.h"
++#include "framework_defs.h"
+ 
++#include "fifo.h"
+ #include "console.h"
+ #include "shell.h"
+ #include "cli.h"
+diff --git a/stack/framework/components/console/console.c b/stack/framework/components/console/console.c
+index 8a1c629..244971d 100644
+--- a/stack/framework/components/console/console.c
++++ b/stack/framework/components/console/console.c
+@@ -7,10 +7,11 @@
+ 
+ #include "framework_defs.h"
+ #include "platform_defs.h"
++#include "hal_defs.h"
++
+ #include "fifo.h"
+ #include "scheduler.h"
+ #include "console.h"
+-#include "hal_defs.h"
+ #include "debug.h"
+ 
+ #ifdef FRAMEWORK_CONSOLE_ENABLED
+diff --git a/stack/framework/components/log/log.c b/stack/framework/components/log/log.c
+index 1b3e6d4..03dfff7 100644
+--- a/stack/framework/components/log/log.c
++++ b/stack/framework/components/log/log.c
+@@ -22,22 +22,21 @@
+  * \author daniel.vandenakker@uantwerpen.be
+  */
+ 
+-#include "log.h"
+-#include "string.h"
+-#include "ng.h"
+-#include "hwuart.h"
+-
+ #include <stdio.h>
+ #include <stdarg.h>
+ #include <unistd.h>
+-#include "framework_defs.h"
++
++#include "hwuart.h"
+ #include "hwsystem.h"
+ 
++#include "framework_defs.h"
++#include "log.h"
++#include "string.h"
++#include "ng.h"
+ #include "console.h"
+ 
+ #ifdef FRAMEWORK_LOG_ENABLED
+ 
+-
+ static uint32_t NGDEF(counter);
+ 
+ 
+diff --git a/stack/framework/components/shell/shell.c b/stack/framework/components/shell/shell.c
+index e58e2c5..40c2dcb 100644
+--- a/stack/framework/components/shell/shell.c
++++ b/stack/framework/components/shell/shell.c
+@@ -22,11 +22,10 @@
+  * \author contact@christophe.vg
+  */
+ 
+-#include "shell.h"
+-
+ #include "framework_defs.h"
+ #ifdef FRAMEWORK_SHELL_ENABLED
+ 
++#include "shell.h"
+ 
+ #define CMD_BUFFER_SIZE 512
+ #define CMD_HANDLER_REGISTRATIONS_COUNT 3 // TODO configurable using cmake
+diff --git a/stack/framework/components/timer/timer.c b/stack/framework/components/timer/timer.c
+index 5dd8192..3b74218 100644
+--- a/stack/framework/components/timer/timer.c
++++ b/stack/framework/components/timer/timer.c
+@@ -16,12 +16,13 @@
+  * limitations under the License.
+  */
+ 
+-#include "timer.h"
+-#include "ng.h"
++#include "framework_defs.h"
+ #include "hwtimer.h"
+ #include "hwatomic.h"
++
++#include "timer.h"
++#include "ng.h"
+ #include "debug.h"
+-#include "framework_defs.h"
+ #include "log.h"
+ #include "errors.h"
+ 
+diff --git a/stack/framework/framework_bootstrap.c b/stack/framework/framework_bootstrap.c
+index cb45b31..daa8902 100644
+--- a/stack/framework/framework_bootstrap.c
++++ b/stack/framework/framework_bootstrap.c
+@@ -16,6 +16,8 @@
+  * limitations under the License.
+  */
+ 
++#include "framework_defs.h"
++
+ #include "scheduler.h"
+ #include "timer.h"
+ #include "hwsystem.h"
+diff --git a/stack/framework/hal/chips/netdev_driver/inc/net/netopt.h b/stack/framework/hal/chips/netdev_driver/inc/net/netopt.h
+index a1aa025..29934b5 100644
+--- a/stack/framework/hal/chips/netdev_driver/inc/net/netopt.h
++++ b/stack/framework/hal/chips/netdev_driver/inc/net/netopt.h
+@@ -25,8 +25,6 @@
+ #ifndef NET_NETOPT_H
+ #define NET_NETOPT_H
+ 
+-#include "platform_defs.h"
+-
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+diff --git a/stack/framework/hal/inc/hwdebug.h b/stack/framework/hal/inc/hwdebug.h
+index e37915c..351c39d 100644
+--- a/stack/framework/hal/inc/hwdebug.h
++++ b/stack/framework/hal/inc/hwdebug.h
+@@ -38,7 +38,6 @@
+ 
+ #include "types.h"
+ #include "link_c.h"
+-#include "platform_defs.h"
+ 
+ #if PLATFORM_NUM_DEBUGPINS > 0
+     #define DEBUG_PIN_SET(pin) hw_debug_set(pin)
+diff --git a/stack/framework/hal/inc/hwradio.h b/stack/framework/hal/inc/hwradio.h
+index 07c7287..d0c55ba 100644
+--- a/stack/framework/hal/inc/hwradio.h
++++ b/stack/framework/hal/inc/hwradio.h
+@@ -33,9 +33,7 @@
+ #include "string.h"
+ 
+ #include "link_c.h"
+-#include "hal_defs.h"
+ #include "timer.h"
+-#include "platform_defs.h"
+ 
+ #define HW_RSSI_INVALID 0x7FFF
+ 
+diff --git a/stack/framework/inc/console.h b/stack/framework/inc/console.h
+index 3dad582..0479273 100644
+--- a/stack/framework/inc/console.h
++++ b/stack/framework/inc/console.h
+@@ -9,7 +9,6 @@
+ 
+ #include "hwuart.h"
+ 
+-#include "framework_defs.h"
+ 
+ #ifdef FRAMEWORK_CONSOLE_ENABLED
+ 
+diff --git a/stack/framework/inc/dae.h b/stack/framework/inc/dae.h
+index 76e975d..bf11dde 100644
+--- a/stack/framework/inc/dae.h
++++ b/stack/framework/inc/dae.h
+@@ -23,7 +23,6 @@
+ #define DAE_H_
+ 
+ #include "stdint.h"
+-#include "framework_defs.h"
+ 
+ #define SUBPROFILES_NB	4
+ #define SUBBANDS_NB		8
+@@ -34,6 +33,10 @@
+ #define DEFAULT_ACCESS_PROFILES_COUNT 3
+ #define DEFAULT_ACCESS_CLASS 0x21
+ 
++#ifndef FRAMEWORK_FS_TRUSTED_NODE_TABLE_SIZE
++#define FRAMEWORK_FS_TRUSTED_NODE_TABLE_SIZE 16
++#endif
++
+ typedef enum
+ {
+     CSMA_CA_MODE_UNC = 0,
+diff --git a/stack/framework/inc/debug.h b/stack/framework/inc/debug.h
+index f89dfcd..09bce1a 100644
+--- a/stack/framework/inc/debug.h
++++ b/stack/framework/inc/debug.h
+@@ -27,7 +27,6 @@
+ #ifndef __DEBUG_H_
+ #define __DEBUG_H_
+ 
+-#include "framework_defs.h"
+ #include "assert.h" // start from assert.h which defines __ASSERT_FUNCT and then redefine assert
+ #include "hwsystem.h"
+ #include <stdio.h>
+diff --git a/stack/framework/inc/fs.h b/stack/framework/inc/fs.h
+index 0dd5fc2..56c179a 100644
+--- a/stack/framework/inc/fs.h
++++ b/stack/framework/inc/fs.h
+@@ -36,6 +36,14 @@
+ #include "alp.h"
+ #include "d7ap.h"
+ 
++#ifndef FRAMEWORK_FS_FILE_COUNT
++#define FRAMEWORK_FS_FILE_COUNT 80
++#endif
++
++#ifndef FRAMEWORK_FS_FILESYSTEM_SIZE
++#define FRAMEWORK_FS_FILESYSTEM_SIZE 1200
++#endif
++
+ typedef enum
+ {
+     FS_STORAGE_TRANSIENT = 0,
+diff --git a/stack/framework/inc/log.h b/stack/framework/inc/log.h
+index f92cf98..391ef5b 100644
+--- a/stack/framework/inc/log.h
++++ b/stack/framework/inc/log.h
+@@ -38,7 +38,6 @@
+ #define __LOG_H_
+ 
+ #include "link_c.h"
+-#include "framework_defs.h"
+ #include "types.h"
+ 
+ /*! \brief The source in the stack from which the log originates  */
+diff --git a/stack/framework/inc/shell.h b/stack/framework/inc/shell.h
+index 02c3320..6f6eba9 100644
+--- a/stack/framework/inc/shell.h
++++ b/stack/framework/inc/shell.h
+@@ -27,8 +27,6 @@
+ #ifndef SHELL_H_
+ #define SHELL_H_
+ 
+-#include "framework_defs.h"
+-
+ #define SHELL_CMD_HEADER_SIZE 4
+ 
+ #include "link_c.h"
+diff --git a/stack/framework/inc/timer.h b/stack/framework/inc/timer.h
+index ff0e991..08cdbf0 100644
+--- a/stack/framework/inc/timer.h
++++ b/stack/framework/inc/timer.h
+@@ -49,7 +49,6 @@
+ #include "types.h"
+ #include "scheduler.h"
+ #include "hwtimer.h"
+-#include "framework_defs.h"
+ 
+ typedef uint32_t timer_tick_t;
+ 
+@@ -64,6 +63,11 @@ typedef struct
+ //a bit of dirty macro evaluation to prepend HWTIMER_FREQ_ to the value of 'FRAMEWORK_TIMER_RESOLUTION'
+ #define ___CONCAT2(a,b) a ## b
+ #define ___CONCAT(a, b) ___CONCAT2(a,b)
++
++#ifndef FRAMEWORK_TIMER_RESOLUTION
++#define FRAMEWORK_TIMER_RESOLUTION 1MS
++#endif
++
+ /*! \brief The frequency of the hardware timer used to power the framework timer
+  *
+  * This value can be configured by setting the 'FRAMEWORK_TIMER_RESOLUTION' CMake property
+diff --git a/stack/modules/d7ap/d7ap_stack.c b/stack/modules/d7ap/d7ap_stack.c
+index 5b82ae3..9bcc2d8 100644
+--- a/stack/modules/d7ap/d7ap_stack.c
++++ b/stack/modules/d7ap/d7ap_stack.c
+@@ -19,8 +19,6 @@
+  * \author philippe.nunes@cortus.com
+  */
+ 
+-#include "framework_defs.h"
+-
+ #include "bitmap.h"
+ #include "errors.h"
+ #include "debug.h"
+diff --git a/stack/modules/d7ap/phy.h b/stack/modules/d7ap/phy.h
+index 0ca69cb..6e1a9fd 100644
+--- a/stack/modules/d7ap/phy.h
++++ b/stack/modules/d7ap/phy.h
+@@ -32,10 +32,8 @@
+ 
+ #include "link_c.h"
+ #include "errors.h"
+-#include "hal_defs.h"
+ #include "timer.h"
+ #include "hwradio.h"
+-#include "platform_defs.h"
+ 
+ #define HW_RSSI_INVALID 0x7FFF
+ 
+-- 
+2.7.4
+
