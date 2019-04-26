@@ -1,0 +1,10 @@
+## the cpu to build for
+export CPU = cortus_aps
+export MCPU = aps3r
+export CPU_MODEL = ciot25
+
+# flasher configuration
+
+
+# if drivers are implemented (for LCD display, buzzer...) include the related headers 
+#INCLUDES += -I$(RIOTBOARD)/$(BOARD)/drivers/include
