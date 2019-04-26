@@ -51,8 +51,13 @@
 #include "event/timeout.h"
 #include "event/callback.h"
 #include "net/mqttsn.h"
+
+#if defined(MODULE_D7A) && !defined(MODULE_GNRC_SOCK_UDP)
+#include "d7a.h"
+#else
 #include "net/sock/udp.h"
 #include "net/sock/util.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -140,7 +145,7 @@ extern "C" {
  *
  * For the default value, see spec v1.2, section 7.2 -> T_RETRY: 10 to 15 sec
  */
-#define ASYMCUTE_T_RETRY            (10U)       /* -> 10 sec */
+#define ASYMCUTE_T_RETRY            (100U)       /* -> 10 sec */
 #endif
 
 #ifndef ASYMCUTE_N_RETRY
@@ -151,6 +156,14 @@ extern "C" {
  */
 #define ASYMCUTE_N_RETRY            (3U)
 #endif
+
+#ifndef ASYMCUTE_MAX_ACTIVE_GW
+/**
+ * @brief   Maximum number of active gateways
+ */
+#define ASYMCUTE_MAX_ACTIVE_GW            (4U)
+#endif
+
 
 /**
  * @brief   Return values used by public Asymcute functions
@@ -254,15 +267,34 @@ struct asymcute_req {
     size_t data_len;                /**< length of the request packet in byte */
     uint16_t msg_id;                /**< used message id for this request */
     uint8_t retry_cnt;              /**< retransmission counter */
+    bool broadcast;                 /**< broadcast flag set when request is SEARCHGW, GWINFO, ADVERTISE */
 };
+
+
+typedef struct gw_info {
+#if defined(MODULE_D7A) && !defined(MODULE_GNRC_SOCK_UDP)
+    d7a_address addr;  /**< UID address of the remote node acting as a gateway */
+#else
+    sock_udp_ep_t server_ep;
+#endif
+    uint8_t gw_id;     /**< the Id of the GW */
+} gw_info_t;
 
 /**
  * @brief   Asymcute connection context
  */
 struct asymcute_con {
-    mutex_t lock;                       /**< synchronization lock */
+    mutex_t lock;                              /**< synchronization lock */
+    gw_info_t gateway[ASYMCUTE_MAX_ACTIVE_GW]; /**< list of active gateway addresses in preference order*/
+    uint8_t gw_count;                   /**< Number of active gateways */
+    uint8_t gw_connected;               /**< Index of the connected gateway */
+#if defined(MODULE_D7A) && !defined(MODULE_GNRC_SOCK_UDP)
+    d7a_address remote_addr;
+    event_callback_t d7a_evt;
+#else
     sock_udp_t sock;                    /**< socket used by a connections */
     sock_udp_ep_t server_ep;            /**< the gateway's UDP endpoint */
+#endif
     asymcute_req_t *pending;            /**< list holding pending requests */
     asymcute_sub_t *subscriptions;      /**< list holding active subscriptions */
     asymcute_evt_cb_t user_cb;          /**< event callback provided by user */
@@ -273,6 +305,7 @@ struct asymcute_con {
     uint8_t keepalive_retry_cnt;        /**< keep alive transmission counter */
     uint8_t state;                      /**< connection state */
     uint8_t rxbuf[ASYMCUTE_BUFSIZE];    /**< connection specific receive buf */
+    uint8_t rxlen;                      /**< data length stored in receive buf */
     char cli_id[ASYMCUTE_ID_MAXLEN + 1];/**< buffer to store client ID */
 };
 
@@ -450,10 +483,10 @@ bool asymcute_is_connected(const asymcute_con_t *con);
 /**
  * @brief   Connect to the given MQTT-SN gateway
  *
- * @param[in,out] con   connection to use
+ * @param[in,out] con   connection to use. This structure may specify the endpoint of the target gateway
  * @param[in,out] req   request context to use for CONNECT procedure
- * @param[in] server    UDP endpoint of the target gateway
  * @param[in] cli_id    client ID to register with the gateway
+ * @param[in] addr      address of the gateway (IP address string representation or D7A UID address)
  * @param[in] clean     set `true` to start a clean session
  * @param[in] will      last will (currently not implemented)
  *
@@ -463,9 +496,8 @@ bool asymcute_is_connected(const asymcute_con_t *con);
  * @return  ASYMCUTE_GWERR if the connection is not in idle state
  * @return  ASYMCUTE_BUSY if the given request context is already in use
  */
-int asymcute_connect(asymcute_con_t *con, asymcute_req_t *req,
-                     sock_udp_ep_t *server, const char *cli_id, bool clean,
-                     asymcute_will_t *will);
+int asymcute_connect(asymcute_con_t *con, asymcute_req_t *req, const char *cli_id,
+                     const char *addr, bool clean, asymcute_will_t *will);
 
 /**
  * @brief   Close the given connection

@@ -26,7 +26,11 @@
 
 #include "net/asymcute.h"
 
-#define ENABLE_DEBUG            (0)
+#ifdef MODULE_D7A
+#include "d7a.h"
+#endif
+
+#define ENABLE_DEBUG            (1)
 #include "debug.h"
 
 #define PROTOCOL_VERSION        (0x01)
@@ -43,6 +47,7 @@
 #define MINLEN_PUBACK           (7U)
 #define MINLEN_SUBACK           (8U)
 #define MINLEN_UNSUBACK         (4U)
+#define MINLEN_GWINFO           (3U)
 
 #define IDPOS_REGACK            (4U)
 #define IDPOS_PUBACK            (4U)
@@ -51,10 +56,13 @@
 
 #define LEN_PINGRESP            (2U)
 
+#define BROADCAST_RADIUS        (1U)
+
 /* Internally used connection states */
 enum {
     UNINITIALIZED = 0,      /**< connection context is not initialized */
     NOTCON,                 /**< not connected to any gateway */
+    SEARCHING_GW,            /**< searching for an active gateway */
     CONNECTING,             /**< connection is being setup */
     CONNECTED,              /**< connection is established */
     TEARDOWN,               /**< connection is being torn down */
@@ -63,6 +71,12 @@ enum {
 /* the main handler thread needs a stack and a message queue */
 static event_queue_t _queue;
 static char _stack[ASYMCUTE_HANDLER_STACKSIZE];
+
+static asymcute_req_t search_gw_req = {
+    .data = { 3, MQTTSN_SEARCHGW, BROADCAST_RADIUS },
+    .data_len = 3,
+    .broadcast = true
+};
 
 /* necessary forward function declarations */
 static void _on_req_timeout(void *arg);
@@ -99,6 +113,31 @@ static uint16_t _msg_id_next(asymcute_con_t *con)
         return ++con->last_id;
     }
     return con->last_id;
+}
+
+static void send_unicast(asymcute_con_t *con, const void *data, size_t len)
+{
+#if defined(MODULE_D7A) && !defined(MODULE_GNRC_SOCK_UDP)
+    if (con->gw_count == 0)
+    {
+        DEBUG("ERROR, unicast not possible when gateway is not connected");
+        return;
+    }
+
+    d7a_unicast(data, len, &con->gateway[con->gw_connected].addr);
+#else
+    sock_udp_send(&con->sock, data, len, &con->server_ep);
+#endif
+}
+
+static void send_broadcast(asymcute_con_t *con, const void *data, size_t len)
+{
+#if defined(MODULE_D7A) && !defined(MODULE_GNRC_SOCK_UDP)
+    (void)con;
+    d7a_broadcast(data, len);
+#else
+    sock_udp_send(&con->sock, data, len, NULL); // NULL remote not yet supported
+#endif
 }
 
 /* @pre con is locked */
@@ -171,7 +210,10 @@ static void _compile_sub_unsub(asymcute_req_t *req, asymcute_con_t *con,
 static void _req_resend(asymcute_req_t *req, asymcute_con_t *con)
 {
     event_timeout_set(&req->to_timer, RETRY_TO);
-    sock_udp_send(&con->sock, req->data, req->data_len, &con->server_ep);
+    if (req->broadcast)
+        send_broadcast(con, req->data, req->data_len);
+    else
+        send_unicast(con, req->data, req->data_len);
 }
 
 /* @pre con is locked */
@@ -187,13 +229,14 @@ static void _req_send(asymcute_req_t *req, asymcute_con_t *con,
     /* add request to the pending queue (if non-con request) */
     req->next = con->pending;
     con->pending = req;
+
     /* send request */
     _req_resend(req, con);
 }
 
 static void _req_send_once(asymcute_req_t *req, asymcute_con_t *con)
 {
-    sock_udp_send(&con->sock, req->data, req->data_len, &con->server_ep);
+    send_unicast(con, req->data, req->data_len);
     mutex_unlock(&req->lock);
 }
 
@@ -234,6 +277,8 @@ static void _on_req_timeout(void *arg)
 {
     asymcute_req_t *req = (asymcute_req_t *)arg;
 
+    DEBUG("_on_req_timeout resend the request \n");
+
     /* only process the timeout, if the request is still active */
     if (req->con == NULL) {
         return;
@@ -262,6 +307,12 @@ static void _on_req_timeout(void *arg)
 static unsigned _on_con_timeout(asymcute_con_t *con, asymcute_req_t *req)
 {
     (void)req;
+
+    if(con->state == SEARCHING_GW)
+    {
+        // unlock the next request containing the connect message
+        mutex_unlock(&req->next->lock);
+    }
 
     con->state = NOTCON;
     return ASYMCUTE_TIMEOUT;
@@ -299,7 +350,7 @@ static void _on_keepalive_evt(void *arg)
     if (con->keepalive_retry_cnt) {
         /* (re)send keep alive ping and set dedicated retransmit timer */
         uint8_t ping[2] = { 2, MQTTSN_PINGREQ };
-        sock_udp_send(&con->sock, ping, sizeof(ping), &con->server_ep);
+        send_unicast(con, ping, sizeof(ping));
         con->keepalive_retry_cnt--;
         event_timeout_set(&con->keepalive_timer, RETRY_TO);
         mutex_unlock(&con->lock);
@@ -311,11 +362,49 @@ static void _on_keepalive_evt(void *arg)
     }
 }
 
+static void _on_gw_info(asymcute_con_t *con, const uint8_t *data, size_t len)
+{
+    mutex_lock(&con->lock);
+    asymcute_req_t *req = _req_preprocess(con, len, MINLEN_GWINFO, NULL, 0);
+
+    //asymcute_req_t *req = con->pending;
+    if ((req == NULL) || (con->state != SEARCHING_GW)) {
+        DEBUG("_on_gw_info ERROR req = NULL\n");
+        mutex_unlock(&con->lock);
+        return;
+    }
+
+    // store the gw info in the list
+    con->gateway[con->gw_count].gw_id = data[2];
+    if (len == 11)
+    {
+        memcpy(&con->gateway[con->gw_count].addr, &data[3], sizeof(d7a_address));
+    }
+    else
+    {
+        memcpy(&con->gateway[con->gw_count].addr, &con->remote_addr, sizeof(d7a_address));
+    }
+
+    DEBUG("\nGW info store new GW id %d \n", con->gateway[con->gw_count].gw_id);
+    con->gw_count++;
+
+    /* Send the CONNECT message */
+    req = req->next;
+    con->state = CONNECTING;
+    con->pending = NULL;
+
+    _req_send(req, con, _on_con_timeout);
+
+    mutex_unlock(&con->lock);
+}
+
+
 static void _on_connack(asymcute_con_t *con, const uint8_t *data, size_t len)
 {
     mutex_lock(&con->lock);
     asymcute_req_t *req = _req_preprocess(con, len, MINLEN_CONNACK, NULL, 0);
     if (req == NULL) {
+        DEBUG("_on_connack ERROR req = NULL\n");
         mutex_unlock(&con->lock);
         return;
     }
@@ -357,7 +446,7 @@ static void _on_pingreq(asymcute_con_t *con)
     /* simply reply with a PINGRESP message */
     mutex_lock(&con->lock);
     uint8_t resp[2] = { LEN_PINGRESP, MQTTSN_PINGRESP };
-    sock_udp_send(&con->sock, resp, sizeof(resp), &con->server_ep);
+    send_unicast(con, resp, sizeof(resp));
     mutex_unlock(&con->lock);
 }
 
@@ -399,9 +488,10 @@ static void _on_regack(asymcute_con_t *con, const uint8_t *data, size_t len)
     con->user_cb(req, ret);
 }
 
-static void _on_publish(asymcute_con_t *con, uint8_t *data,
-                        size_t pos, size_t len)
+static void _on_publish(asymcute_con_t *con, uint8_t *data, size_t len)
 {
+    uint8_t pos = (data[0] == 0x01) ? 3 : 1;
+
     /* verify message length */
     if (len < (pos + 6)) {
         return;
@@ -425,7 +515,7 @@ static void _on_publish(asymcute_con_t *con, uint8_t *data,
         uint8_t pkt[7] = { 7, MQTTSN_PUBACK, 0, 0, 0, 0, ret };
         /* copy topic and message id */
         memcpy(&pkt[2], &data[pos + 2], 4);
-        sock_udp_send(&con->sock, pkt, 7, &con->server_ep);
+        send_unicast(con, pkt, 7);
     }
 
     /* release the context and notify the user (on success) */
@@ -514,6 +604,102 @@ static void _on_unsuback(asymcute_con_t *con, const uint8_t *data, size_t len)
     con->user_cb(req, ASYMCUTE_UNSUBSCRIBED);
 }
 
+static void msg_handler(void *arg)
+{
+    asymcute_con_t *con = (asymcute_con_t *)arg;
+    uint8_t type = (con->rxbuf[0] == 0x01) ? con->rxbuf[3] : con->rxbuf[1];
+
+    DEBUG("\nmsg_handler from asymcute\n");
+
+#if defined(MODULE_D7A) && !defined(MODULE_GNRC_SOCK_UDP)
+    /* make sure the incoming data was send by 'our' gateway in case of unicast message*/
+    if ((type != MQTTSN_GWINFO) && ( type != MQTTSN_ADVERTISE))
+    {
+
+        DEBUG("\nour expected gw\n");
+        char *ptr = &con->gateway[con->gw_connected].addr;
+        for( uint32_t i=0 ; i<8 ; i++ )
+        {
+            printf(" %02X", ptr[i]);
+        }
+
+        DEBUG("\nthe received address\n");
+
+        ptr = &con->remote_addr;
+        for( uint32_t i=0 ; i<8 ; i++ )
+        {
+            printf(" %02X", ptr[i]);
+        }
+    	if (memcmp(&con->gateway[con->gw_connected].addr, &con->remote_addr, sizeof(d7a_address))!=0) {
+            DEBUG("\nERROR, incoming data not sent by our gateway, discard data\n");
+            return;
+        }
+    }
+#endif
+
+    DEBUG("\n Received message type %d \n", type);
+
+    /* figure out required action based on message type */
+    switch (type) {
+        case MQTTSN_GWINFO:
+            _on_gw_info(con, con->rxbuf, con->rxlen);
+            break;
+        case MQTTSN_CONNACK:
+            _on_connack(con, con->rxbuf, con->rxlen);
+            break;
+        case MQTTSN_DISCONNECT:
+            _on_disconnect(con, con->rxlen);
+            break;
+        case MQTTSN_PINGREQ:
+            _on_pingreq(con);
+            break;
+        case MQTTSN_PINGRESP:
+            _on_pingresp(con);
+            break;
+        case MQTTSN_REGACK:
+            _on_regack(con, con->rxbuf, con->rxlen);
+            break;
+        case MQTTSN_PUBLISH:
+            _on_publish(con, con->rxbuf, con->rxlen);
+            break;
+        case MQTTSN_PUBACK:
+            _on_puback(con, con->rxbuf, con->rxlen);
+            break;
+        case MQTTSN_SUBACK:
+            _on_suback(con, con->rxbuf, con->rxlen);
+            break;
+        case MQTTSN_UNSUBACK:
+            _on_unsuback(con, con->rxbuf, con->rxlen);
+            break;
+        default:
+            break;
+    }
+}
+
+
+
+#if defined(MODULE_D7A) && !defined(MODULE_GNRC_SOCK_UDP)
+static void _on_data(void *arg, uint8_t *pkt, uint8_t pkt_len, d7a_address *remote)
+{
+    asymcute_con_t *con = (asymcute_con_t *)arg;
+    size_t len;
+    size_t pos = _len_get(pkt, &len);
+
+    memcpy(&con->remote_addr, remote, sizeof(d7a_address));
+
+    /* validate incoming data: verify message length */
+    if ((pkt_len < 2) ||
+        (pkt_len <= pos) || (pkt_len < len)) {
+        /* length field of MQTT-SN packet seems to be invalid -> drop the pkt */
+        return;
+    }
+
+    //
+    memcpy(con->rxbuf, pkt, len);
+    con->rxlen = pkt_len;
+    event_post(&_queue, &con->d7a_evt.super);
+}
+#else
 static void _on_data(asymcute_con_t *con, size_t pkt_len, sock_udp_ep_t *remote)
 {
     size_t len;
@@ -523,6 +709,7 @@ static void _on_data(asymcute_con_t *con, size_t pkt_len, sock_udp_ep_t *remote)
     if (!sock_udp_ep_equal(&con->server_ep, remote)) {
         return;
     }
+
     /* validate incoming data: verify message length */
     if ((pkt_len < 2) ||
         (pkt_len <= pos) || (pkt_len < len)) {
@@ -530,39 +717,7 @@ static void _on_data(asymcute_con_t *con, size_t pkt_len, sock_udp_ep_t *remote)
         return;
     }
 
-    /* figure out required action based on message type */
-    uint8_t type = con->rxbuf[pos];
-    switch (type) {
-        case MQTTSN_CONNACK:
-            _on_connack(con, con->rxbuf, len);
-            break;
-        case MQTTSN_DISCONNECT:
-            _on_disconnect(con, len);
-            break;
-        case MQTTSN_PINGREQ:
-            _on_pingreq(con);
-            break;
-        case MQTTSN_PINGRESP:
-            _on_pingresp(con);
-            break;
-        case MQTTSN_REGACK:
-            _on_regack(con, con->rxbuf, len);
-            break;
-        case MQTTSN_PUBLISH:
-            _on_publish(con, con->rxbuf, pos, len);
-            break;
-        case MQTTSN_PUBACK:
-            _on_puback(con, con->rxbuf, len);
-            break;
-        case MQTTSN_SUBACK:
-            _on_suback(con, con->rxbuf, len);
-            break;
-        case MQTTSN_UNSUBACK:
-            _on_unsuback(con, con->rxbuf, len);
-            break;
-        default:
-            break;
-    }
+    msg_handler(con);
 }
 
 void *_listener(void *arg)
@@ -588,6 +743,7 @@ void *_listener(void *arg)
     /* should never be reached */
     return NULL;
 }
+#endif
 
 void *_handler(void *arg)
 {
@@ -624,6 +780,14 @@ int asymcute_listener_run(asymcute_con_t *con, char *stack, size_t stacksize,
     con->state = NOTCON;
     con->user_cb = callback;
 
+#if defined(MODULE_D7A) && !defined(MODULE_GNRC_SOCK_UDP)
+    d7a_register_receive_callback(_on_data, con);
+    event_callback_init(&con->d7a_evt, msg_handler, con);
+
+    // reset GW infos
+    con->gw_count = 0;
+    con->gw_connected = 0;
+#else
     /* start listener thread */
     thread_create(stack,
                   stacksize,
@@ -632,6 +796,7 @@ int asymcute_listener_run(asymcute_con_t *con, char *stack, size_t stacksize,
                   _listener,
                   con,
                   "asymcute_listener");
+#endif
 
 end:
     mutex_unlock(&con->lock);
@@ -692,13 +857,11 @@ bool asymcute_is_connected(const asymcute_con_t *con)
     return (con->state == CONNECTED);
 }
 
-int asymcute_connect(asymcute_con_t *con, asymcute_req_t *req,
-                     sock_udp_ep_t *server, const char *cli_id, bool clean,
-                     asymcute_will_t *will)
+int asymcute_connect(asymcute_con_t *con, asymcute_req_t *req, const char *cli_id,
+                     const char *addr, bool clean, asymcute_will_t *will)
 {
     assert(con);
     assert(req);
-    assert(server);
     assert(cli_id);
 
     int ret = ASYMCUTE_OK;
@@ -724,13 +887,9 @@ int asymcute_connect(asymcute_con_t *con, asymcute_req_t *req,
         goto end;
     }
 
-    /* prepare the connection context */
-    con->state = CONNECTING;
-    strncpy(con->cli_id, cli_id, sizeof(con->cli_id));
-    memcpy(&con->server_ep, server, sizeof(con->server_ep));
-
-    /* compile and send connect message */
+    /* build the CONNECT message according the provided settings */
     req->msg_id = 0;
+    req->broadcast = false;
     req->data[0] = (uint8_t)(id_len + 6);
     req->data[1] = MQTTSN_CONNECT;
     req->data[2] = ((clean) ? MQTTSN_CS : 0);
@@ -738,6 +897,53 @@ int asymcute_connect(asymcute_con_t *con, asymcute_req_t *req,
     byteorder_htobebufs(&req->data[4], ASYMCUTE_KEEPALIVE);
     memcpy(&req->data[6], cli_id, id_len);
     req->data_len = (size_t)req->data[0];
+
+    // store the client Id used to identify the client to the server
+    strncpy(con->cli_id, cli_id, sizeof(con->cli_id));
+
+    if ((addr == NULL) || (strlen(addr) == 0))
+    {
+        // No GW address provided, use the default one or start the discovery procedure
+        if (!con->gw_count) // no active gateway
+        {
+            /* prepare for gateway discovery */
+            con->state = SEARCHING_GW;
+            con->pending = req;
+            _req_send(&search_gw_req, con, _on_con_timeout);
+            goto end;
+        }
+    }
+    else
+    {
+#if defined(MODULE_D7A) && !defined(MODULE_GNRC_SOCK_UDP)
+        if (con->gw_count == ASYMCUTE_MAX_ACTIVE_GW)
+        // override the last GW address if the list is full
+        if (con->gw_count == ASYMCUTE_MAX_ACTIVE_GW)
+            con->gw_count--;
+
+        memcpy(&con->gateway[con->gw_count].addr, addr, sizeof(d7a_address));
+
+        // Force to use this GW address
+        con->gw_connected = con->gw_count;
+        con->gw_count++;
+#else
+        sock_udp_ep_t ep;
+        if (sock_udp_str2ep(&con->server_ep, addr) != 0) {
+            puts("error: unable to parse gateway address");
+            ret = ASYMCUTE_GWERR;
+            goto end;
+        }
+
+        if (ep.port == 0) {
+            ep.port = MQTTSN_DEFAULT_PORT;
+        }
+
+        memcpy(&con->server_ep, ep, sizeof(con->server_ep));
+#endif
+    }
+
+    /* prepare the connection context */
+    con->state = CONNECTING;
     _req_send(req, con, _on_con_timeout);
 
 end:
