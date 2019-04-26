@@ -92,6 +92,10 @@
 #include "net/sock/dtls.h"
 #endif
 
+#ifdef MODULE_D7A
+#include "d7a.h"
+#endif
+
 #define ENABLE_DEBUG (0)
 #include "debug.h"
 
@@ -194,6 +198,11 @@ void auto_init(void)
 #ifdef MODULE_AUTO_INIT_USBUS
     extern void auto_init_usb(void);
     auto_init_usb();
+#endif
+
+#ifdef MODULE_D7A
+    DEBUG("Auto init d7a module.\n");
+    d7a_init();
 #endif
 
 /* initialize network devices */
@@ -306,9 +315,11 @@ void auto_init(void)
     auto_init_w5100();
 #endif
 
+#ifndef MODULE_D7A
 #if defined(MODULE_SX127X) && !defined(MODULE_SEMTECH_LORAMAC)
     extern void auto_init_sx127x(void);
     auto_init_sx127x();
+#endif
 #endif
 
 #ifdef MODULE_NRF802154
