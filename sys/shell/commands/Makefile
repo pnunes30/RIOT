@@ -73,5 +73,7 @@ endif
 ifneq (,$(filter periph_rtc,$(USEMODULE)))
   SRC += sc_rtc.c
 endif
-
+ifneq (,$(filter asymcute,$(USEMODULE)))
+  SRC += sc_asymcute.c
+endif
 include $(RIOTBASE)/Makefile.base
