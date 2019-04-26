@@ -598,7 +598,11 @@ void xtimer_set_timeout_flag(xtimer_t *t, uint32_t timeout);
 #endif
 
 #ifndef XTIMER_SHIFT
-#if (XTIMER_HZ == 32768ul)
+#ifdef ARCH_XTIMER_CONVERSION
+/* No shift necessary, the conversion is *probably* not a power of two
+ * and is handled by arch specific functions overloading tick_conversion.h */
+#define XTIMER_SHIFT (0)
+#elif (XTIMER_HZ == 32768ul)
 /* No shift necessary, the conversion is not a power of two and is handled by
  * functions in tick_conversion.h */
 #define XTIMER_SHIFT (0)
