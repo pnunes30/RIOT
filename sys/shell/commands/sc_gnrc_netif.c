@@ -433,7 +433,7 @@ static void _netif_list(kernel_pid_t iface)
     if (res >= 0) {
         printf(" NID: 0x%" PRIx16, u16);
     }
-    res = gnrc_netapi_get(iface, NETOPT_BANDWIDTH, 0, &u8, sizeof(u8));
+    res = gnrc_netapi_get(iface, NETOPT_BANDWIDTH, 0, &u32, sizeof(u32));
     if (res >= 0) {
         printf(" BW: %skHz ", _netopt_bandwidth_str[u8]);
     }
