@@ -80,6 +80,9 @@ endif
 ifneq (,$(filter i2c_scan,$(USEMODULE)))
   SRC += sc_i2c_scan.c
 endif
+ifneq (,$(filter asymcute,$(USEMODULE)))
+  SRC += sc_asymcute.c
+endif
 
 ifneq (,$(filter semtech-loramac,$(USEPKG)))
   SRC += sc_loramac.c

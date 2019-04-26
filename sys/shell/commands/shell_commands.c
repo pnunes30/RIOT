@@ -157,6 +157,10 @@ extern int _loramac_handler(int argc, char **argv);
 extern int _nimble_netif_handler(int argc, char **argv);
 #endif
 
+#ifdef MODULE_ASYMCUTE
+extern int _asymcute_handler(int argc, char **argv);
+#endif
+
 const shell_command_t _shell_command_list[] = {
     {"reboot", "Reboot the node", _reboot_handler},
 #ifdef MODULE_CONFIG
@@ -258,6 +262,9 @@ const shell_command_t _shell_command_list[] = {
 #endif
 #ifdef MODULE_NIMBLE_NETIF
     { "ble", "Manage BLE connections for NimBLE", _nimble_netif_handler },
+#endif
+#ifdef MODULE_ASYMCUTE
+    {"mqtt", "MQTT-SN commands", _asymcute_handler},
 #endif
     {NULL, NULL, NULL}
 };
