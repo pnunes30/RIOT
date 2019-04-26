@@ -154,7 +154,9 @@ class SerCmd(cmd.Cmd):
         self.filters = []
         self.ignores = []
         self.json_regs = dict()
-        self.init_cmd = []
+        # self.init_cmd = []
+        # -jmhe- '/' ugly trick to reenable stdin when pyterm seems to stop responding...
+        self.init_cmd = ['/'] 
         self.load_config()
         if not hasattr(self, "fmt_str") or self.fmt_str is None:
             self.fmt_str = default_fmt_str
