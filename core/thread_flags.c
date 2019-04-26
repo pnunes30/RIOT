@@ -56,8 +56,8 @@ thread_flags_t thread_flags_clear(thread_flags_t mask)
 
 static void _thread_flags_wait_any(thread_flags_t mask)
 {
-    thread_t *me = (thread_t*) sched_active_thread;
     unsigned state = irq_disable();
+    thread_t *me = (thread_t*) sched_active_thread;
     if (!(me->flags & mask)) {
         _thread_flags_wait(mask, me, STATUS_FLAG_BLOCKED_ANY, state);
     }
@@ -70,7 +70,7 @@ thread_flags_t thread_flags_wait_any(thread_flags_t mask)
 {
     thread_t *me = (thread_t*) sched_active_thread;
     _thread_flags_wait_any(mask);
-    return _thread_flags_clear_atomic(me, mask);
+    return _thread_flags_clear_atomic(me, mask);	//FIXME: APS O3 might optimize me->flags in register while clobbered in wait
 }
 
 thread_flags_t thread_flags_wait_one(thread_flags_t mask)
@@ -95,7 +95,7 @@ thread_flags_t thread_flags_wait_all(thread_flags_t mask)
         irq_restore(state);
     }
 
-    return _thread_flags_clear_atomic(me, mask);
+    return _thread_flags_clear_atomic(me, mask);	//FIXME: APS O3 might optimize me->flags in register while clobbered in wait
 }
 
 inline int __attribute__((always_inline)) thread_flags_wake(thread_t *thread)

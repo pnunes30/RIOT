@@ -68,3 +68,7 @@ results/
 # Clangd compile flags (language server)
 compile_commands.json
 compile_flags.txt
+
+# APS additions
+tests/*/*.map
+examples/*/*.map

@@ -50,13 +50,18 @@ extern "C" {
  */
 #ifdef DEVELHELP
 #include "cpu_conf.h"
+#ifdef __APS__
+#define DEBUG_PRINT_ASSERT_BRK assert(false);
+#else
+#define DEBUG_PRINT_ASSERT_BRK
+#endif
 #define DEBUG_PRINT(...) \
     do { \
         if ((sched_active_thread == NULL) || (sched_active_thread->stack_size >= THREAD_EXTRA_STACKSIZE_PRINTF)) { \
             printf(__VA_ARGS__); \
         } \
         else { \
-            puts("Cannot debug, stack too small"); \
+            puts("Cannot debug, stack too small"); DEBUG_PRINT_ASSERT_BRK \
         } \
     } while (0)
 #else
