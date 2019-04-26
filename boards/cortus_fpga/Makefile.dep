@@ -1,0 +1,5 @@
+#USEMODULE += xtimer
+
+ifneq (,$(filter gnrc_netdev_default netdev_default,$(USEMODULE)))
+  USEMODULE += sx127x
+endif
