@@ -29,8 +29,13 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include "shell.h"
 #include "shell_commands.h"
+
+#define ENABLE_DEBUG (0)
+#include "debug.h"
+
 
 #if !defined(SHELL_NO_ECHO) || !defined(SHELL_NO_PROMPT)
 #ifdef MODULE_NEWLIB
@@ -43,6 +48,23 @@ static void _putchar(int c) {
 #define _putchar putchar
 #endif
 #endif
+
+uint8_t rx_state;
+typedef enum
+{
+    STATE_ESCAPE,
+    STATE_CURSOR,
+    STATE_CMD
+} rx_state_t;
+
+#define HISTORY_MAX_SIZE    5
+#define MAX_COMMAND_SIZE    512
+static uint8_t history_latest_cmd = 0;
+static uint8_t history_top_index = 0;
+static uint8_t history_index = 0;
+
+static char history[HISTORY_MAX_SIZE][MAX_COMMAND_SIZE];
+static bool history_full = false;
 
 static shell_command_handler_t find_handler(const shell_command_t *command_list, char *command)
 {
@@ -241,6 +263,26 @@ static int readline(char *buf, size_t size)
             _putchar('\n');
 #endif
 
+            if (line_buf_ptr > buf)
+            {
+                // backup cmd if different from the previous one
+                if (memcmp(&history[history_latest_cmd][0], buf, strlen(buf)) != 0)
+                {
+                    strcpy(&history[history_top_index][0], buf);
+                    DEBUG("history_top_index %d  %s \r\n", history_top_index, &history[history_top_index][0]);
+
+                    history_index = history_top_index;
+                    history_latest_cmd = history_top_index;
+                    if (history_top_index < (HISTORY_MAX_SIZE - 1))
+                        history_top_index++;
+                    else
+                    {
+                        history_top_index = 0;
+                        history_full = true;
+                    }
+                }
+            }
+
             /* return 1 if line is empty, 0 otherwise */
             return line_buf_ptr == buf;
         }
@@ -259,8 +301,70 @@ static int readline(char *buf, size_t size)
             _putchar('\b');
 #endif
         }
+        else if (c == 27) // escape sequence
+        {
+#ifndef SHELL_NO_ECHO
+            //clean line
+            while (line_buf_ptr > buf)
+            {
+                _putchar('\b');
+                _putchar(' ');
+                _putchar('\b');
+                line_buf_ptr--;
+            }
+#endif
+            line_buf_ptr = buf;
+            rx_state = STATE_ESCAPE;
+            continue;
+        }
+        else if ((c == 91) && (rx_state ==  STATE_ESCAPE)) // skip the [ after the escape character
+        {
+            rx_state = STATE_CURSOR;
+            continue;
+        }
+        else if ((c == 'A' || c == 'B') && (rx_state ==  STATE_CURSOR))
+        {
+            DEBUG("history_latest %d\n", history_latest_cmd);
+
+            if (c == 'A')
+            {
+                if ((history_index > history_latest_cmd) && (history_full))
+                {
+                     if (history_index < (HISTORY_MAX_SIZE -1))
+                         history_index++;
+                     else
+                         history_index = 0;
+                 }
+                 else if (history_index < history_latest_cmd)
+                     history_index++;
+
+                 DEBUG("UP history_index %d\n", history_index);
+             }
+             else if (c == 'B')
+             {
+                 if (history_index <= history_latest_cmd)
+                 {
+                     if (history_index > 0)
+                         history_index--;
+                     else if (history_full && history_index == 0)
+                         history_index =  HISTORY_MAX_SIZE - 1;
+                 }
+                 else if (history_index > history_latest_cmd)
+                     history_index--;
+
+                 DEBUG("DOWN history_index %d \r\n", history_index);
+             }
+
+             strcpy(buf, &history[history_index][0]);
+             line_buf_ptr = buf + strlen(&history[history_index][0]);
+             printf("%s", buf);
+
+             rx_state = STATE_CMD;
+             continue;
+        }
         else {
             *line_buf_ptr++ = c;
+            rx_state = STATE_CMD;
 #ifndef SHELL_NO_ECHO
             _putchar(c);
 #endif
