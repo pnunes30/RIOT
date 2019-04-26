@@ -122,6 +122,23 @@ static inline uint64_t _xtimer_usec_from_ticks64(uint64_t ticks) {
     return (usec >> 9); /* equivalent to (usec / 512) */
 }
 
+#elif defined (ARCH_XTIMER_CONVERSION)
+/* the arch must implement tick conversion functions */
+static inline uint32_t _xtimer_ticks_from_usec(uint32_t usec) {
+    return arch_xtimer_ticks_from_usec(usec);
+}
+
+static inline uint64_t _xtimer_ticks_from_usec64(uint64_t usec) {
+    return arch_xtimer_ticks_from_usec64(usec);
+}
+
+static inline uint32_t _xtimer_usec_from_ticks(uint32_t ticks) {
+    return arch_xtimer_usec_from_ticks(ticks);
+}
+
+static inline uint64_t _xtimer_usec_from_ticks64(uint64_t ticks) {
+    return arch_xtimer_usec_from_ticks64(ticks);
+}
 #else
 /* No matching implementation found, try to give meaningful error messages */
 #if ((XTIMER_HZ % 15625) == 0)
