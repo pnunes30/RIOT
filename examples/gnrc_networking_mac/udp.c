@@ -59,11 +59,16 @@ static void send(char *addr_str, char *port_str, char *data, unsigned int num,
         return;
     }
 
-    for (unsigned int i = 0; i < num; i++) {
+    for (unsigned int i = 0; i <= num; i++) {
         gnrc_pktsnip_t *payload, *udp, *ip;
         unsigned payload_size;
         /* allocate payload */
-        payload = gnrc_pktbuf_add(NULL, data, strlen(data), GNRC_NETTYPE_UNDEF);
+        if (num == 0) {
+        	payload_size=delay;
+        }else{
+        	payload_size=strlen(data);
+        }
+        payload = gnrc_pktbuf_add(NULL, data, payload_size, GNRC_NETTYPE_UNDEF);
         if (payload == NULL) {
             puts("Error: unable to copy data to packet buffer");
             return;
@@ -99,9 +104,10 @@ static void send(char *addr_str, char *port_str, char *data, unsigned int num,
         }
         /* access to `payload` was implicitly given up with the send operation above
          * => use temporary variable for output */
-        printf("Success: sent %u byte(s) to [%s]:%u\n", payload_size, addr_str,
-               port);
-        xtimer_usleep(delay);
+        printf("UDP cmd: dispatched %u byte(s) to [%s]:%u\n", payload_size, addr_str, port); /*no success guarantee*/
+        if (num > 1) {
+        	xtimer_usleep(delay);
+        }
     }
 }
 
@@ -152,7 +158,8 @@ int udp_cmd(int argc, char **argv)
         uint32_t num = 1;
         uint32_t delay = 1000000;
         if (argc < 5) {
-            printf("usage: %s send <addr> <port> <data> [<num> [<delay in us>]]\n",
+        	/* hack to set the payload lenght instead of message repetition */
+            printf("usage: %s send <addr> <port> <data> [[<num> [<delay in us>]]|0 <pkt_len>]\n",
                    argv[0]);
             return 1;
         }

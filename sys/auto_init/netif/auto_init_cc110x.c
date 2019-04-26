@@ -17,7 +17,7 @@
  * @author  Kaspar Schleiser <kaspar@schleiser.de>
  */
 
-#ifdef MODULE_CC110X
+#if defined(MODULE_CC110X) || defined(__ECLIPSE__)
 
 #include "log.h"
 #include "debug.h"
@@ -28,6 +28,11 @@
 
 #include "cc110x.h"
 #include "cc110x_params.h"
+
+#undef MODULE_GNRC_GOMACH  /* FIXME -jm- */
+#ifdef MODULE_GNRC_GOMACH
+#include "net/gnrc/gomach/gomach.h"
+#endif
 
 /**
  * @brief   Define stack parameters for the MAC layer thread
@@ -55,9 +60,15 @@ void auto_init_cc110x(void)
             LOG_ERROR("[auto_init_netif] error initializing cc110x #%u\n", i);
         }
         else {
-            gnrc_netif_cc110x_create(_stacks[i], CC110X_MAC_STACKSIZE,
-                                     CC110X_MAC_PRIO, "cc110x",
-                                     (netdev_t *)&cc110x_devs[i]);
+#if defined(MODULE_GNRC_GOMACH)
+          gnrc_netif_gomach_create(_stacks[i], CC110X_MAC_STACKSIZE,
+        		  	  	  	  	  CC110X_MAC_PRIO, "cc110x",
+								  (netdev_t *)&cc110x_devs[i]);
+#else
+          gnrc_netif_cc110x_create(_stacks[i], CC110X_MAC_STACKSIZE,
+        		  	  	  	  	  CC110X_MAC_PRIO, "cc110x",
+								  (netdev_t *)&cc110x_devs[i]);
+#endif
         }
     }
 }

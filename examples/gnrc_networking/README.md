@@ -6,6 +6,38 @@ or by communicating between two RIOT instances.
 Note that the former only works with native, i.e. if you run RIOT on
 your Linux machine.
 
+## Connecting RIOT w SLIP and the Linux host
+
+SLIP is only a framing protocol (it is ipv4 or ipv6 compatible).
+BUT slattach on Linux, used to create a slip interface) is, by limitation, only ipv4 compatible.
+We must use tunslip6 from Contiki if we use a SLIP interface on Riot.
+
+=> In Riot Makefile, enable a slip interface on the last (NUMOF-1 by default) UART:
+
+	>> add slipdev_params.h to your project (anywhere in the include path if not already in the arch)
+	>> USEMODULE += slipdev in the project's Makefile
+
+=> On Riot, configure manually a local address in the shell:
+	
+	>Note: setting GNRC_IPV6_STATIC_LLADDR in Makefile has no effect anymore.
+	@riot# ifconfig <if=pid of slipdev thread> add fe80::cafe:cafe:cafe:1
+
+=> On Linux Host, use tunslip6:
+
+	@host# cd dist/tools/tunslip/ && make && sudo make install
+	@host# (sudo) tunslip6 -s /dev/ttyUSB0 fe80::cafe:cafe:cafe:2
+
+=> ping test (USEMODULE += gnrc_icmpv6_echo):
+
+	@host# ping6 -f fe80::cafe:cafe:cafe:1%tun0
+	@riot# ping6 fe80::cafe:cafe:cafe:1
+	
+> **Note:** MODULE_ETHOS (Ethernet over Serial) multiplexes, the same way SLIP does framing, 
+several channels on a unique serial port. On Riot, it multiplexes the STDIO and an Ethernet
+netdev. On the host side, the ethos application demux the 2 channels and creates a tun interface
+the same way tunslip6 does. 
+Ethos is an alternative when no additional UART is available for SLIP, but with a mux penalty. 
+
 ## Connecting RIOT native and the Linux host
 
 > **Note:** RIOT does not support IPv4, so you need to stick to IPv6

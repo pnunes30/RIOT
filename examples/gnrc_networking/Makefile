@@ -16,6 +16,23 @@ BOARD_INSUFFICIENT_MEMORY := arduino-duemilanove arduino-mega2560 arduino-uno \
                              nucleo-l053r8 spark-core stm32f0discovery telosb \
                              waspmote-pro wsn430-v1_3b wsn430-v1_4 z1
 
+# use ethos (ethernet over serial) for network communication and stdio over
+# UART, but not on native, as native has a tap interface towards the host.
+ifeq (,$(filter native,$(BOARD)))
+  GNRC_NETIF_NUMOF := 2
+  USEMODULE += ethos
+
+  # ethos baudrate can be configured from make command
+  ETHOS_BAUDRATE ?= 115200
+  CFLAGS += -DETHOS_BAUDRATE=$(ETHOS_BAUDRATE) -DUSE_ETHOS_FOR_STDIO
+  FEATURES_REQUIRED += periph_uart
+
+	# include UHCP client
+	USEMODULE += gnrc_uhcpc
+endif
+#SLIP interface (enabled by default in cpu/Makefile.include)
+#USEMODULE += slipdev
+
 # Include packages that pull up and auto-init the link layer.
 # NOTE: 6LoWPAN will be included if IEEE802.15.4 devices are present
 USEMODULE += gnrc_netdev_default
@@ -26,8 +43,8 @@ USEMODULE += gnrc_icmpv6_error
 USEMODULE += gnrc_ipv6_router_default
 USEMODULE += gnrc_udp
 # Add a routing protocol
-USEMODULE += gnrc_rpl
-USEMODULE += auto_init_gnrc_rpl
+#USEMODULE += gnrc_rpl
+#USEMODULE += auto_init_gnrc_rpl
 # This application dumps received packets to STDIO using the pktdump module
 USEMODULE += gnrc_pktdump
 # Additional networking modules that can be dropped if not needed
@@ -48,8 +65,8 @@ DEVELHELP ?= 1
 # Uncomment the following 2 lines to specify static link lokal IPv6 address
 # this might be useful for testing, in cases where you cannot or do not want to
 # run a shell with ifconfig to get the real link lokal address.
-#IPV6_STATIC_LLADDR ?= '"fe80::cafe:cafe:cafe:1"'
-#CFLAGS += -DGNRC_IPV6_STATIC_LLADDR=$(IPV6_STATIC_LLADDR)
+IPV6_STATIC_LLADDR ?= '"fe80::cafe:cafe:cafe:1"'
+CFLAGS += -DGNRC_IPV6_STATIC_LLADDR=$(IPV6_STATIC_LLADDR)
 
 # Uncomment this to join RPL DODAGs even if DIOs do not contain
 # DODAG Configuration Options (see the doc for more info)

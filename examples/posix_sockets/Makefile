@@ -16,6 +16,21 @@ BOARD_INSUFFICIENT_MEMORY := airfy-beacon arduino-duemilanove arduino-mega2560 \
                              telosb wsn430-v1_3b wsn430-v1_4 yunjia-nrf51822 \
                              waspmote-pro z1
 
+# use ethos (ethernet over serial) for network communication and stdio over
+# UART, but not on native, as native has a tap interface towards the host.
+ifeq (,$(filter native,$(BOARD)))
+  GNRC_NETIF_NUMOF := 2
+  USEMODULE += ethos
+
+  # ethos baudrate can be configured from make command
+  ETHOS_BAUDRATE ?= 115200
+  CFLAGS += -DETHOS_BAUDRATE=$(ETHOS_BAUDRATE) -DUSE_ETHOS_FOR_STDIO
+  FEATURES_REQUIRED += periph_uart
+
+	# include UHCP client
+	USEMODULE += gnrc_uhcpc
+endif
+
 # Include packages that pull up and auto-init the link layer.
 # NOTE: 6LoWPAN will be included if IEEE802.15.4 devices are present
 USEMODULE += gnrc_netdev_default
