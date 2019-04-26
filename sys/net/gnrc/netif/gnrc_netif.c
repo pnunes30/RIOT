@@ -1398,6 +1398,7 @@ static void *_gnrc_netif_thread(void *args)
 static void _pass_on_packet(gnrc_pktsnip_t *pkt)
 {
     /* throw away packet if no one is interested */
+    DEBUG("gnrc_netif: try to forward packet of type %i\n", pkt->type);
     if (!gnrc_netapi_dispatch_receive(pkt->type, GNRC_NETREG_DEMUX_CTX_ALL, pkt)) {
         DEBUG("gnrc_netif: unable to forward packet of type %i\n", pkt->type);
         gnrc_pktbuf_release(pkt);
@@ -1415,6 +1416,7 @@ static void _event_cb(netdev_t *dev, netdev_event_t event)
 
         if (msg_send(&msg, netif->pid) <= 0) {
             puts("gnrc_netif: possibly lost interrupt.");
+            /* APS FIXME: if queue full, the low level driver is not informed, and can't release its resources...*/
         }
     }
     else {
