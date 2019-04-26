@@ -1,0 +1,4 @@
+if [ ! -f fpga.svf ]; then
+   echo "Please cd to the directory containing fpga.svf"
+fi
+openocd -f interface/cortus-ft2232.cfg -f board/cortus-svf-program.cfg

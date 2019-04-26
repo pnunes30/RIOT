@@ -1,0 +1,3 @@
+sudo tunslip6 -s /dev/ttyUSB2 fe80::cafe:cafe:cafe:2
+echo "@riot# ifconfig <if> add fe80::cafe:cafe:cafe:1"
+
