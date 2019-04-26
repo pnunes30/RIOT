@@ -88,6 +88,10 @@
 #include "net/asymcute.h"
 #endif
 
+#ifdef MODULE_D7A
+#include "d7a.h"
+#endif
+
 #define ENABLE_DEBUG (0)
 #include "debug.h"
 
@@ -181,6 +185,11 @@ void auto_init(void)
     DEBUG("Auto init NimBLE\n");
     extern void nimble_riot_init(void);
     nimble_riot_init();
+#endif
+
+#ifdef MODULE_D7A
+    DEBUG("Auto init d7a module.\n");
+    d7a_init();
 #endif
 
 /* initialize network devices */
@@ -281,9 +290,11 @@ void auto_init(void)
     auto_init_w5100();
 #endif
 
+#ifndef MODULE_D7A
 #ifdef MODULE_SX127X
     extern void auto_init_sx127x(void);
     auto_init_sx127x();
+#endif
 #endif
 
 #endif /* MODULE_AUTO_INIT_GNRC_NETIF */
