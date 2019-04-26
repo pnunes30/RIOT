@@ -45,6 +45,7 @@ USEMODULE += littlefs
 # USEMODULE += fatfs
 USEMODULE += constfs
 # USEMODULE += devfs
+USEMODULE += tmpfs
 
 # Set file systems specific variables
 ifneq (,$(filter littlefs, $(USEMODULE)))
