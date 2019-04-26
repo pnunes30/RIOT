@@ -105,7 +105,7 @@
 #if ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 5)) || (__GNUC__ >= 5)
 #define UNREACHABLE() __builtin_unreachable()
 #else
-#define UNREACHABLE() do { /* nothing */ } while (1)
+#define UNREACHABLE() do { aps_assert(0);/* nothing */ } while (1)
 #endif
 
 /**

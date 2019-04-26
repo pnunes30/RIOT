@@ -56,3 +56,8 @@ Makefile.local
 
 # scan-build artifacts
 scan-build/
+
+# APS additions
+tests/*/*.map
+examples/*/*.map
+*trace_buf.raw

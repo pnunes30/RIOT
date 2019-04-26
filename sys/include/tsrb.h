@@ -153,6 +153,14 @@ int tsrb_add_one(tsrb_t *rb, char c);
  */
 int tsrb_add(tsrb_t *rb, const char *src, size_t n);
 
+#ifdef __APS__
+void tsrb_dropr(tsrb_t *rb, size_t n);
+void tsrb_dropl(tsrb_t *rb, size_t n);
+char* tsrb_curr(const tsrb_t *rb);
+unsigned tsrb_last(const tsrb_t *rb);
+void tsrb_ins(tsrb_t *rb, const char *src, size_t n, unsigned at_writes);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

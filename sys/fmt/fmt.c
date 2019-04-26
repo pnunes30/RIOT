@@ -26,6 +26,14 @@
 
 #if defined(__WITH_AVRLIBC__) || defined(__mips__)
 #include <stdio.h>  /* for fwrite() */
+#elif defined(__APS__)
+#include <stdio.h>  /* for fwrite() */
+/* define unistd.h constants not present in miniclib to avoid -fuse-clib=newlib */
+# if !defined(STDIN_FILENO) || !defined(STDOUT_FILENO) || !defined(STDOUT_FILENO)
+#  define STDIN_FILENO    0       /* standard input file descriptor */
+#  define STDOUT_FILENO   1       /* standard output file descriptor */
+#  define STDERR_FILENO   2       /* standard error file descriptor */
+# endif
 #else
 /* work around broken sys/posix/unistd.h */
 ssize_t write(int fildes, const void *buf, size_t nbyte);

@@ -111,7 +111,11 @@ int timer_init(tim_t dev, unsigned long freq, timer_cb_t cb, void *arg);
  * @return                  1 on success
  * @return                  -1 on error
  */
+#ifdef __APS__
+unsigned int timer_set(tim_t dev, int channel, unsigned int timeout); //APS: returns now() and assert() instead of return -1
+#else
 int timer_set(tim_t dev, int channel, unsigned int timeout);
+#endif
 
 /**
  * @brief Set an absolute timeout value for the given channel of the given timer
@@ -124,7 +128,11 @@ int timer_set(tim_t dev, int channel, unsigned int timeout);
  * @return                  1 on success
  * @return                  -1 on error
  */
+#ifdef __APS__
+unsigned int timer_set_absolute(tim_t dev, int channel, unsigned int value); //APS: returns now() and assert() instead of return -1
+#else
 int timer_set_absolute(tim_t dev, int channel, unsigned int value);
+#endif
 
 /**
  * @brief Clear the given channel of the given timer device

@@ -79,3 +79,38 @@ int tsrb_add(tsrb_t *rb, const char *src, size_t n)
     }
     return (n - tmp);
 }
+
+#ifdef __APS__
+void tsrb_dropr(tsrb_t *rb, size_t n)
+{
+	rb->writes -= (rb->writes >= n) ? n : rb->writes;
+	if (rb->writes < rb->reads)
+		rb->writes = rb->reads;
+}
+void tsrb_dropl(tsrb_t *rb, size_t n)
+{
+	rb->reads += n;
+	if (rb->writes < rb->reads)
+		rb->reads = rb->writes;
+}
+char* tsrb_curr(const tsrb_t *rb)
+{
+    return &rb->buf[rb->writes & (rb->size - 1)];
+}
+unsigned tsrb_last(const tsrb_t *rb)
+{
+    return rb->writes;
+}
+static void _ins(tsrb_t *rb, char c, unsigned at_writes)
+{
+    rb->buf[at_writes & (rb->size - 1)] = c;
+}
+void tsrb_ins(tsrb_t *rb, const char *src, size_t n, unsigned at_writes)
+{
+    size_t tmp = n;
+    while (tmp) {
+        _ins(rb, *src++, at_writes++);
+        tmp--;
+    }
+}
+#endif
