@@ -25,6 +25,8 @@
 
 #include <unistd.h>
 
+#include "periph/uart.h"	/* for UART_DEV */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
