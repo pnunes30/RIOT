@@ -1,0 +1,36 @@
+export CPU_ARCH = aps
+export CPU_FAM = cortus_aps
+
+## project wide debug is not possible. must be enabled per file
+#export CFLAGS += -DENABLE_DEBUG
+## enable APS_DEBUG in cpu.h to be visible by eclipse.
+#export CFLAGS += -DAPS_DEBUG
+export CFLAGS += -DDEBUG_ASSERT_VERBOSE
+# the em_device.h header requires a global define with the cpu model
+#export CFLAGS += -D$(shell echo $(CPU_MODEL) | tr 'a-z' 'A-Z')
+
+export CFLAGS += -Wno-format-nonliteral
+
+## include vendor device headers
+INCLUDES += -I$(RIOTCPU)/cortus_aps/include/
+INCLUDES += -I$(RIOTCPU)/cortus_aps/include/Bsp
+
+export LINKFLAGS += -L$(RIOTCPU)/cortus_aps/ldscripts
+LINKER_SCRIPT = elf32aps.ld
+
+# Modules, to be moved to board's Makefile.include
+USEMODULE += cortus_aps_periph
+
+# include common SPI functions
+USEMODULE += periph_common
+
+export USEMODULE += stdio_uart
+
+## networking even if not used (autoinit)
+#USEMODULE += ethos
+#USEMODULE += slipdev
+#USEMODULE += cc110x
+#USEMODULE += sx127x
+
+
+include $(RIOTMAKE)/arch/aps.inc.mk
