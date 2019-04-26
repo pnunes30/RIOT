@@ -72,14 +72,33 @@ int sx127x_check_version(const sx127x_t *dev);
 void sx127x_reg_write(const sx127x_t *dev, uint8_t addr, uint8_t data);
 
 /**
+ * @brief   Writes the 2 bytes radio register at specified MSB address.
+ *
+ * @param[in] dev                      The sx127x device structure pointer
+ * @param[in] msbaddr                  MSB Register address
+ * @param[in] data                     New register value
+ */
+void sx127x_reg_write_u16(const sx127x_t *dev, uint8_t msbaddr, uint16_t data);
+
+/**
  * @brief   Reads the radio register at specified address.
  *
  * @param[in] dev                      The sx127x device structure pointer
  * @param[in] addr                     Register address
  *
- * @return	Register value
+ * @return    Register value
  */
 uint8_t sx127x_reg_read(const sx127x_t *dev, uint8_t addr);
+
+/**
+ * @brief   Reads the 2 bytes radio register at specified MSB address.
+ *
+ * @param[in] dev                      The sx127x device structure pointer
+ * @param[in] addr                     Register address
+ *
+ * @return    Register value
+ */
+uint16_t sx127x_reg_read_u16(const sx127x_t *dev, uint8_t msbaddr);
 
 /**
  * @brief   Writes multiple radio registers starting at address (burst-mode).
@@ -121,14 +140,23 @@ void sx127x_write_fifo(const sx127x_t *dev, uint8_t *buffer, uint8_t size);
  */
 void sx127x_read_fifo(const sx127x_t *dev, uint8_t *buffer, uint8_t size);
 
+#ifdef _APS_OSS7_
 /**
- * @brief   Reads the current RSSI value.
+ * @brief   Flush the FIFO.
+ *
+ * @param[in] dev                      The sx127x device descriptor
+ */
+void sx127x_flush_fifo(const sx127x_t *dev);
+
+/**
+ * @brief   check if the FIFO is empty.
  *
  * @param[in] dev                      The sx127x device descriptor
  *
- * @return current value of RSSI in [dBm]
+ * @return TRUE/FALSE to indicate whether the FIFO is empty or not
  */
-int16_t sx127x_read_rssi(const sx127x_t *dev);
+bool sx127x_is_fifo_empty(const sx127x_t *dev);
+#endif
 
 #if defined(MODULE_SX1276)
 /**
@@ -140,6 +168,17 @@ int16_t sx127x_read_rssi(const sx127x_t *dev);
  * @param[in] dev                      The sx127x device structure pointer
  */
 void sx1276_rx_chain_calibration(sx127x_t *dev);
+#endif
+
+#ifdef _APS_OSS7_
+/* FIXME: declared here due to missing gpio_edge(rising|falling) interface. */
+/*        we probably need 2 isr variants instead of extending the gpio api
+ *        to avoid gpio reconfiguration and missed irq due to latency... */
+/* SX127X DIO interrupt handlers initialization */
+void sx127x_on_dio0_isr(void *arg);
+void sx127x_on_dio1_isr(void *arg);
+void sx127x_on_dio2_isr(void *arg);
+void sx127x_on_dio3_isr(void *arg);
 #endif
 
 #ifdef __cplusplus

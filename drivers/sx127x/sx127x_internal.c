@@ -32,7 +32,7 @@
 #include "sx127x_internal.h"
 #include "sx127x_params.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG (1)
 #include "debug.h"
 
 
@@ -69,11 +69,28 @@ void sx127x_reg_write(const sx127x_t *dev, uint8_t addr, uint8_t data)
     sx127x_reg_write_burst(dev, addr, &data, 1);
 }
 
+void sx127x_reg_write_u16(const sx127x_t *dev, uint8_t msbaddr, uint16_t data)
+{
+    // we begin to send the MSB so if the processor is little endian, we need to swap the short
+    uint16_t swap = __builtin_bswap16(data);
+
+    sx127x_reg_write_burst(dev, msbaddr, (uint8_t*)&swap, 2);
+}
+
 uint8_t sx127x_reg_read(const sx127x_t *dev, uint8_t addr)
 {
     uint8_t data;
 
     sx127x_reg_read_burst(dev, addr, &data, 1);
+
+    return data;
+}
+
+uint16_t sx127x_reg_read_u16(const sx127x_t *dev, uint8_t msbaddr)
+{
+    uint16_t data;
+
+    sx127x_reg_read_burst(dev, msbaddr, (uint8_t*)&data, 2);
 
     return data;
 }
@@ -118,11 +135,13 @@ void sx1276_rx_chain_calibration(sx127x_t *dev)
     uint8_t reg_pa_config_init_val;
     uint32_t initial_freq;
 
+    DEBUG("[sx127x] RX calibration");
+
     /* Save context */
     reg_pa_config_init_val = sx127x_reg_read(dev, SX127X_REG_PACONFIG);
     initial_freq = (double) (((uint32_t) sx127x_reg_read(dev, SX127X_REG_FRFMSB) << 16)
                              | ((uint32_t) sx127x_reg_read(dev, SX127X_REG_FRFMID) << 8)
-                             | ((uint32_t) sx127x_reg_read(dev, SX127X_REG_FRFLSB))) * (double)LORA_FREQUENCY_RESOLUTION_DEFAULT;
+                             | ((uint32_t) sx127x_reg_read(dev, SX127X_REG_FRFLSB))) * (double)SX127X_FREQUENCY_RESOLUTION;
 
     /* Cut the PA just in case, RFO output, power = -1 dBm */
     sx127x_reg_write(dev, SX127X_REG_PACONFIG, 0x00);
@@ -155,9 +174,19 @@ void sx1276_rx_chain_calibration(sx127x_t *dev)
 }
 #endif
 
-int16_t sx127x_read_rssi(const sx127x_t *dev)
+int16_t sx127x_read_rssi(sx127x_t *dev)
 {
     int16_t rssi = 0;
+
+#ifdef _APS_OSS7_ //FIXME: required ?
+    if (dev->settings.state != SX127X_RF_RX_RUNNING)
+    {
+        sx127x_set_state(dev, SX127X_RF_RX_RUNNING);        //FIXME: discard const qualifier. allowed to change state ???
+        /* Set radio in continuous reception */
+        sx127x_set_op_mode(dev, SX127X_RF_OPMODE_RECEIVER);
+        xtimer_usleep(700); // wait settling time and RSSI smoothing time
+    }
+#endif
 
     switch (dev->settings.modem) {
         case SX127X_MODEM_FSK:
@@ -229,3 +258,19 @@ bool sx127x_is_channel_free(sx127x_t *dev, uint32_t freq, int16_t rssi_threshold
 
     return (rssi <= rssi_threshold);
 }
+
+#ifdef _APS_OSS7_
+void sx127x_flush_fifo(const sx127x_t *dev)
+{
+    sx127x_reg_write(dev, SX127X_REG_IRQFLAGS2, 0x10);
+}
+
+bool sx127x_is_fifo_empty(const sx127x_t *dev)
+{
+#ifdef PLATFORM_SX127X_USE_DIO3_PIN
+    return hw_gpio_get_in(dev->params.dio3_pin);
+#else
+    return (sx127x_reg_read(dev, SX127X_REG_IRQFLAGS2) & 0x40);
+#endif
+}
+#endif

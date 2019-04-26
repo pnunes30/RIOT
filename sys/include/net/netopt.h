@@ -272,6 +272,16 @@ typedef enum {
     NETOPT_TX_END_IRQ,
 
     /**
+     * @brief en/disable the interrupt to refill the FIFO for continuous transmission.
+     *
+     * This interrupt is triggered when it's time to refill the FIFO with a
+     * subsequent packet for continuous transmission.
+     *
+     * @note not all transceivers may support this interrupt
+     */
+    NETOPT_TX_REFILL_IRQ,
+
+    /**
      * @brief   (@ref netopt_enable_t) perform channel clear assessment before transmitting
      *
      * This may be a hardware feature of the given transceiver, or might be
@@ -458,9 +468,76 @@ typedef enum {
     NETOPT_LAST_ED_LEVEL,
 
     /**
+     * @brief   (uint8_t) Tx/RX fifo threshold for the radio transceiver
+     *
+     * Get/set the TX/RX FIFO threshold
+     */
+    NETOPT_FIFOTHRESHOLD,
+
+    /**
      * @brief   (uint16_t) preamble length
      */
     NETOPT_PREAMBLE_LENGTH,
+
+    /**
+     * @brief   Get/Set the preamble polarity as uint8_t in host byte order.
+     */
+    NETOPT_PREAMBLE_POLARITY,
+
+    /**
+     * @brief   Get/Set the Preamble detector enable flag as uint8_t in host byte order.
+     */
+    NETOPT_PREAMBLE_DETECT_ON,
+
+    /**
+     * @brief   Get/Set the SYNC enable flag as uint8_t in host byte order.
+     */
+    NETOPT_SYNC_ON,
+
+    /**
+     * @brief   Get/Set sync word length as uint16_t in host byte order.
+     */
+    NETOPT_SYNC_LENGTH,
+
+    /**
+     * @brief   Get/Set sync word in host byte order.
+     */
+    NETOPT_SYNC_WORD,
+
+    /**
+     * @brief   Get/Set frequency deviation as uint32_t in host byte order.
+     */
+    NETOPT_FDEV,
+
+    /**
+     * @brief   Get/Set the bitrate as uint32_t in host byte order.
+     */
+    NETOPT_BITRATE,
+
+    /**
+     * @brief   Get/Set the RSSI value as uint16_t in host byte order.
+     */
+    NETOPT_RSSI_VALUE,
+
+    /**
+     * @brief   Get/Set the RSSI smoothing value as uint8_t in host byte order.
+     */
+    NETOPT_RSSI_SMOOTHING,
+
+    /**
+     * @brief   Get/Set the modulation shaping as uint8_t in host byte order.
+     */
+    NETOPT_MOD_SHAPING,
+
+    /**
+     * @brief   Get/Set the CRC enable flag as uint8_t in host byte order.
+     */
+    NETOPT_CRC_ON,
+
+    /**
+     * @brief   Get/Set the DC-free encoding scheme as netopt_dc_free_t type
+     */
+    NETOPT_DC_FREE_SCHEME,
 
     /**
      * @brief   (@ref netopt_enable_t) frame integrity check (e.g CRC)
@@ -508,7 +585,7 @@ typedef enum {
     NETOPT_TX_TIMEOUT,
 
     /**
-     * @brief   (uint8_t) radio modulation bandwidth
+     * @brief   (uint32_t) radio modulation bandwidth
      */
     NETOPT_BANDWIDTH,
 
@@ -713,6 +790,15 @@ typedef enum {
     NETOPT_RF_TESTMODE_CTX_CW,      /**< carrier wave continuous tx mode */
     NETOPT_RF_TESTMODE_CTX_PRBS9,   /**< PRBS9 continuous tx mode */
 } netopt_rf_testmode_t;
+
+/**
+ * @brief   Option parameter to be used with @ref NETOPT_DC_FREE_SCHEME
+ */
+typedef enum {
+    NETOPT_DC_FREE_NONE = 0,         /**< No DC-FREE encoding/decoding */
+    NETOPT_DC_FREE_MANCHESTER,       /**< Manchester */
+    NETOPT_DC_FREE_WHITENING,        /**< PN9 whitening */
+} netopt_dc_free_t;
 
 /**
  * @brief   Get a string ptr corresponding to opt, for debugging

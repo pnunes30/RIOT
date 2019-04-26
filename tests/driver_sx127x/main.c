@@ -406,7 +406,7 @@ static void _event_cb(netdev_t *dev, netdev_event_t event)
     }
     else {
         size_t len;
-        netdev_lora_rx_info_t packet_info;
+        netdev_sx127x_packet_info_t packet_info;
         switch (event) {
             case NETDEV_EVENT_RX_STARTED:
                 puts("Data reception started");
