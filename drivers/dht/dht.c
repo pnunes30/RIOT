@@ -30,7 +30,7 @@
 #include "assert.h"
 #include "xtimer.h"
 #include "timex.h"
-#include "periph/gpio.h"
+#include "periph_cpu.h"
 
 #include "dht.h"
 #include "dht_params.h"
@@ -112,7 +112,6 @@ int dht_init(dht_t *dev, const dht_params_t *params)
 
     /* check parameters and configuration */
     assert(dev && params);
-    assert((params->type == DHT11) || (params->type == DHT22) || (params->type == DHT21));
 
     memset(dev, 0, sizeof(dht_t));
     dev->params = *params;
