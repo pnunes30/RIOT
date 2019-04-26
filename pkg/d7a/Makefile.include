@@ -1,0 +1,24 @@
+D7A_DIR = $(RIOTBASE)/pkg/d7a
+
+INCLUDES += -I$(D7A_DIR)/include \
+            -I$(BINDIRBASE)/pkg/$(BOARD)/d7a/stack \
+            -I$(BINDIRBASE)/pkg/$(BOARD)/d7a/stack/framework/inc \
+            -I$(BINDIRBASE)/pkg/$(BOARD)/d7a/stack/framework/hal/inc \
+
+ifneq (,$(filter vfs,$(USEMODULE)))
+	INCLUDES += -I$(RIOTBASE)/sys/posix/include
+ifeq (,$(filter tmpfs,$(USEMODULE)))
+		USEMODULE += tmpfs
+endif
+endif
+
+ifneq (,$(filter d7a_contrib,$(USEMODULE)))
+  DIRS += $(D7A_DIR)/contrib
+endif
+
+# d7a firmware file strings to be exported in riotbuild.h
+D7A_GIT_SHA1 := $(shell git --git-dir="$(RIOTBASE)/.git" show --quiet --pretty=format:%h 2> /dev/null)
+ifeq (,$(RIOT_GIT_SHA1))
+  D7A_GIT_SHA1 := '00000000'
+endif
+CFLAGS += -DD7A_GIT_SHA1=\"$(D7A_GIT_SHA1)\" -DD7A_APP_NAME=\"$(APPLICATION)\"

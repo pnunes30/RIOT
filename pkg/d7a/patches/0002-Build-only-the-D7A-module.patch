@@ -1,0 +1,53 @@
+From 86b373268244a627a8ee4484364a9ce7f1267da8 Mon Sep 17 00:00:00 2001
+From: Philippe Nunes <philippe.nunes@cortus.com>
+Date: Fri, 3 Aug 2018 10:37:40 +0200
+Subject: [PATCH 2/3] Build only the D7A module
+
+---
+ stack/CMakeLists.txt | 22 ++++------------------
+ 1 file changed, 4 insertions(+), 18 deletions(-)
+
+diff --git a/stack/CMakeLists.txt b/stack/CMakeLists.txt
+index 3090445..ada20a0 100644
+--- a/stack/CMakeLists.txt
++++ b/stack/CMakeLists.txt
+@@ -54,19 +54,6 @@ INSERT_C_FLAGS(BEFORE -std=gnu99 -fno-common)
+ #Retrieve the selected toolchain
+ GET_CURRENT_TOOLCHAIN(TOOLCHAIN)
+ 
+-SET(JLinkExe "JLinkExe")
+-IF(CMAKE_HOST_WIN32)
+-    SET(JLinkExe "jlink.exe")
+-ENDIF()
+-
+-# set default platform
+-IF(NOT PLATFORM)
+-	SET(PLATFORM "B_L072Z_LRWAN1" CACHE STRING "Choose the platform to compile for.")
+-ENDIF()
+-
+-#Then load the Framework
+-ADD_SUBDIRECTORY("framework")
+-
+ #Load the file with platform-specific build commands
+ IF(EXISTS "${PROJECT_SOURCE_DIR}/cmake/platform_${PLATFORM}_macros.cmake")
+     include ("cmake/platform_${PLATFORM}_macros.cmake")
+@@ -74,12 +61,11 @@ ELSE()
+     include ("cmake/platform_default_macros.cmake")
+ ENDIF()
+ 
++EXPORT_GLOBAL_INCLUDE_DIRECTORIES(framework/inc)
++EXPORT_GLOBAL_INCLUDE_DIRECTORIES(framework/hal/inc)
++
+ SET(MODULE_D7AP true CACHE BOOLEAN "") # D7AP module enabled by default
+-SET(MODULE_ALP true CACHE BOOLEAN "")  # ALP module enabled by default
++#SET(MODULE_ALP true CACHE BOOLEAN "")  # ALP module enabled by default
+ 
+ #Then load the modules
+ ADD_SUBDIRECTORY("modules")
+-#And finally the applications
+-ADD_SUBDIRECTORY("apps")
+-#And tests
+-ADD_SUBDIRECTORY("tests")
+-- 
+2.7.4
+

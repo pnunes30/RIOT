@@ -1,0 +1,81 @@
+From 61f2738a1d55b5d163fcdf6b1d7571b4f8854b28 Mon Sep 17 00:00:00 2001
+From: Philippe Nunes <philippe.nunes@cortus.com>
+Date: Wed, 8 Aug 2018 19:24:35 +0200
+Subject: [PATCH 3/3] Replace timer.h by the RIOT abstraction definition
+
+---
+ stack/framework/hal/inc/hwradio.h | 2 +-
+ stack/modules/d7ap/d7anp.c        | 2 +-
+ stack/modules/d7ap/d7anp.h        | 2 +-
+ stack/modules/d7ap/dll.c          | 2 +-
+ stack/modules/d7ap/phy.h          | 2 +-
+ 5 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/stack/framework/hal/inc/hwradio.h b/stack/framework/hal/inc/hwradio.h
+index d0c55ba..24cb484 100644
+--- a/stack/framework/hal/inc/hwradio.h
++++ b/stack/framework/hal/inc/hwradio.h
+@@ -33,7 +33,7 @@
+ #include "string.h"
+ 
+ #include "link_c.h"
+-#include "timer.h"
++#include "d7a/timer.h"
+ 
+ #define HW_RSSI_INVALID 0x7FFF
+ 
+diff --git a/stack/modules/d7ap/d7anp.c b/stack/modules/d7ap/d7anp.c
+index a1d8c0b..df01e50 100644
+--- a/stack/modules/d7ap/d7anp.c
++++ b/stack/modules/d7ap/d7anp.c
+@@ -30,7 +30,7 @@
+ #include "aes.h"
+ #include "packet_queue.h"
+ #include "errors.h"
+-#include "timer.h"
++#include "d7a/timer.h"
+ 
+ #if defined(FRAMEWORK_LOG_ENABLED) && defined(MODULE_D7AP_NP_LOG_ENABLED)
+ #define DPRINT(...) log_print_stack_string(LOG_STACK_NWL, __VA_ARGS__)
+diff --git a/stack/modules/d7ap/d7anp.h b/stack/modules/d7ap/d7anp.h
+index dc6042a..7078e61 100644
+--- a/stack/modules/d7ap/d7anp.h
++++ b/stack/modules/d7ap/d7anp.h
+@@ -35,7 +35,7 @@
+ #include "stdbool.h"
+ 
+ #include "MODULE_D7AP_defs.h"
+-#include "timer.h"
++#include "d7a/timer.h"
+ #include "packet.h"
+ 
+ typedef struct packet packet_t;
+diff --git a/stack/modules/d7ap/dll.c b/stack/modules/d7ap/dll.c
+index 0f472b6..8b6b6c9 100644
+--- a/stack/modules/d7ap/dll.c
++++ b/stack/modules/d7ap/dll.c
+@@ -26,7 +26,7 @@
+ #include "compress.h"
+ #include "fec.h"
+ #include "errors.h"
+-#include "timer.h"
++#include "d7a/timer.h"
+ 
+ #include "phy.h"
+ #include "packet_queue.h"
+diff --git a/stack/modules/d7ap/phy.h b/stack/modules/d7ap/phy.h
+index 6e1a9fd..f47aa58 100644
+--- a/stack/modules/d7ap/phy.h
++++ b/stack/modules/d7ap/phy.h
+@@ -32,7 +32,7 @@
+ 
+ #include "link_c.h"
+ #include "errors.h"
+-#include "timer.h"
++#include "d7a/timer.h"
+ #include "hwradio.h"
+ 
+ #define HW_RSSI_INVALID 0x7FFF
+-- 
+2.7.4
+
