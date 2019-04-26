@@ -25,6 +25,7 @@
 
 #include "shell.h"
 #include "board.h" /* MTD_0 is defined in board.h */
+#include "vfs.h"   /* explicit include */
 
 /* Flash mount point */
 #define FLASH_MOUNT_POINT   "/sda"
@@ -69,7 +70,7 @@ static spiffs_desc_t fs_desc = {
  *  - mount_point field is the mount point name
  *  - private_data depends on the underlying file system. For both spiffs and
  *  littlefs, it needs to be a pointer to the file system descriptor */
-static vfs_mount_t flash_mount = {
+static vfs_mounttab_t flash_mount = {
     .fs = &FS_DRIVER,
     .mount_point = FLASH_MOUNT_POINT,
     .private_data = &fs_desc,
@@ -104,11 +105,13 @@ static constfs_t constfs_desc = {
 
 /* constfs mount point, as for previous example, it needs a file system driver,
  * a mount point and private_data as a pointer to the constfs descriptor */
-static vfs_mount_t const_mount = {
+static vfs_mounttab_t const_mount = {
     .fs = &constfs_file_system,
     .mount_point = "/const",
     .private_data = &constfs_desc,
 };
+
+#ifndef VFS_MOUNTTAB
 
 /* Command handlers */
 static int _mount(int argc, char **argv)
@@ -242,6 +245,10 @@ static const shell_command_t shell_commands[] = {
     { NULL, NULL, NULL }
 };
 
+#else
+#define shell_commands NULL
+#endif /*VFS_MOUNTTAB*/
+
 int main(void)
 {
 #if defined(MTD_0) && (defined(MODULE_SPIFFS) || defined(MODULE_LITTLEFS))
@@ -256,6 +263,10 @@ int main(void)
     else {
         puts("constfs mounted successfully");
     }
+
+#ifdef VFS_MOUNTTAB
+    printf("vfs_mounttab[%d]  @[0x%x]\n",VFS_MOUNTTAB_SZ, VFS_MOUNTTAB);
+#endif
 
     char line_buf[SHELL_DEFAULT_BUFSIZE];
     shell_run(shell_commands, line_buf, SHELL_DEFAULT_BUFSIZE);

@@ -49,6 +49,11 @@ static void _vfs_usage(char **argv)
     printf("%s mv <src> <dest>\n", argv[0]);
     printf("%s rm <file>\n", argv[0]);
     printf("%s df [path]\n", argv[0]);
+    printf("%s mount <path>\n", argv[0]);
+    printf("%s umount <path>\n", argv[0]);
+    printf("%s format <path>\n", argv[0]);
+    printf("%s cat <path>\n", argv[0]);
+    printf("%s tee <path> <string>\n", argv[0]);
     puts("r: Read [bytes] bytes at [offset] in file <path>");
     puts("w: Write (<a>: append, <o> overwrite) <ascii> or <hex> string <data> in file <path>");
     puts("ls: list files in <path>");
@@ -89,6 +94,11 @@ static int _errno_string(int err, char *buf, size_t buflen)
         _case_snprintf_errno_name(EIO);
         _case_snprintf_errno_name(ENAMETOOLONG);
         _case_snprintf_errno_name(EPERM);
+        _case_snprintf_errno_name(EBUSY);
+        _case_snprintf_errno_name(ENOTSUP);
+        _case_snprintf_errno_name(ENODEV);
+        _case_snprintf_errno_name(ENOMEM);
+        _case_snprintf_errno_name(EEXIST);
 
         default:
             res = snprintf(buf, buflen, "%d", err);
@@ -101,6 +111,169 @@ static int _errno_string(int err, char *buf, size_t buflen)
     return len;
 }
 #undef _case_snprintf_errno_name
+
+#ifdef VFS_MOUNTTAB
+int _mounttab_idx(int argc, char **argv)
+{
+	unsigned idx=0;
+    if (VFS_MOUNTTAB_SZ==0) {
+        puts("No built-in VFS_MOUNTTAB entry defined");
+        return -1;
+    }
+    if (argc == 2) {
+        while ( (idx<VFS_MOUNTTAB_SZ) && (strcmp(argv[1],VFS_MOUNTTAB[idx].mount_point) != 0) ) {
+            idx++;
+        }
+    }
+    if ((argc < 2) || (idx >= VFS_MOUNTTAB_SZ)) {
+        printf("Usage: %s <",argv[0]);
+        for (idx=0; idx<VFS_MOUNTTAB_SZ;idx++) {
+            printf("%s%s",VFS_MOUNTTAB[idx].mount_point,(idx==VFS_MOUNTTAB_SZ-1)?">\n":"|" );
+        }
+        return -1;
+	}
+    return idx;
+}
+#endif
+
+/* Command handlers */
+static int _mount_handler(int argc, char **argv)
+{
+    (void)argc;
+    (void)argv;
+#ifdef VFS_MOUNTTAB
+    int idx=_mounttab_idx(argc, argv);
+    if (idx<0)
+        return 1;
+    int res = vfs_mount(&VFS_MOUNTTAB[idx]);
+    if (res < 0) {
+        char err[16];
+        _errno_string(res, err, sizeof(err));
+        printf("Error while mounting %s... (%s). try format\n", VFS_MOUNTTAB[idx].mount_point, err);
+        return 1;
+    }
+
+    printf("%s successfully mounted\n", VFS_MOUNTTAB[idx].mount_point);
+    return 0;
+#else
+    puts("No built-in VFS_MOUNTTAB feature");
+    return 1;
+#endif
+}
+
+static int _format_handler(int argc, char **argv)
+{
+    (void)argc;
+    (void)argv;
+#ifdef VFS_MOUNTTAB
+    int idx=_mounttab_idx(argc, argv);
+    if (idx<0)
+        return 1;
+    int res = vfs_format(&VFS_MOUNTTAB[idx]);
+    if (res < 0) {
+        char err[16];
+        _errno_string(res, err, sizeof(err));
+        printf("Error while formatting %s (%s)\n", VFS_MOUNTTAB[idx].mount_point, err);
+        return 1;
+    }
+
+    printf("%s successfully formatted\n", VFS_MOUNTTAB[idx].mount_point);
+    return 0;
+#else
+    puts("No built-in VFS_MOUNTTAB feature");
+    return 1;
+#endif
+}
+
+static int _umount_handler(int argc, char **argv)
+{
+    (void)argc;
+    (void)argv;
+#ifdef VFS_MOUNTTAB
+    int idx=_mounttab_idx(argc, argv);
+    if (idx<0)
+        return 1;
+    int res = vfs_umount(&VFS_MOUNTTAB[idx]);
+    if (res < 0) {
+        char err[16];
+        _errno_string(res, err, sizeof(err));
+        printf("Error while unmounting %s (%s)\n", VFS_MOUNTTAB[idx].mount_point, err);
+        return 1;
+    }
+
+    printf("%s successfully unmounted\n", VFS_MOUNTTAB[idx].mount_point);
+    return 0;
+#else
+    puts("No built-in VFS_MOUNTTAB feature");
+    return 1;
+#endif
+}
+
+static int _cat_handler(int argc, char **argv)
+{
+    if (argc < 2) {
+        printf("Usage: %s <file>\n", argv[0]);
+        return 1;
+    }
+    /* With newlib, low-level syscalls are plugged to RIOT vfs
+     * on native, open/read/write/close/... are plugged to RIOT vfs */
+#ifdef MODULE_NEWLIB
+    FILE *f = fopen(argv[1], "r");
+    if (f == NULL) {
+        printf("file %s does not exist\n", argv[1]);
+        return 1;
+    }
+    char c;
+    while (fread(&c, 1, 1, f) != 0) {
+        putchar(c);
+    }
+    fclose(f);
+#else
+    int fd = open(argv[1], O_RDONLY);
+    if (fd < 0) {
+        printf("file %s does not exist\n", argv[1]);
+        return 1;
+    }
+    char c;
+    while (read(fd, &c, 1) != 0) {
+        putchar(c);
+    }
+    close(fd);
+#endif
+    return 0;
+}
+
+static int _tee_handler(int argc, char **argv)
+{
+    if (argc != 3) {
+        printf("Usage: %s <file> <str>\n", argv[0]);
+        return 1;
+    }
+
+#ifdef MODULE_NEWLIB
+    FILE *f = fopen(argv[1], "w+");
+    if (f == NULL) {
+        printf("error while trying to create %s\n", argv[1]);
+        return 1;
+    }
+    if (fwrite(argv[2], 1, strlen(argv[2]), f) != strlen(argv[2])) {
+        puts("Error while writing");
+    }
+    fclose(f);
+#else
+    int fd = open(argv[1], O_RDWR | O_CREAT);
+    if (fd < 0) {
+        printf("error while trying to create %s\n", argv[1]);
+        return 1;
+    }
+    if (write(fd, argv[2], strlen(argv[2])) != (ssize_t)strlen(argv[2])) {
+        puts("Error while writing");
+    }
+    close(fd);
+#endif
+    return 0;
+}
+
 
 static void _print_df(const char *path)
 {
@@ -576,6 +749,21 @@ int _vfs_handler(int argc, char **argv)
     }
     else if (strcmp(argv[1], "df") == 0) {
         return _df_handler(argc - 1, &argv[1]);
+    }
+    else if (strcmp(argv[1], "mount") == 0) {
+        return _mount_handler(argc - 1, &argv[1]);
+    }
+    else if (strcmp(argv[1], "umount") == 0) {
+        return _umount_handler(argc - 1, &argv[1]);
+    }
+    else if (strcmp(argv[1], "format") == 0) {
+        return _format_handler(argc - 1, &argv[1]);
+    }
+    else if (strcmp(argv[1], "cat") == 0) {
+        return _cat_handler(argc - 1, &argv[1]);
+    }
+    else if (strcmp(argv[1], "tee") == 0) {
+        return _tee_handler(argc - 1, &argv[1]);
     }
     else {
         printf("vfs: unsupported sub-command \"%s\"\n", argv[1]);

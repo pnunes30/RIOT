@@ -81,6 +81,43 @@ extern "C" {
 /* #define restrict */
 #endif
 
+/**
+ * @brief    vfs_mounttab hook
+ *
+ * When enabled all vfs_mounttab_t variables declared anywhere
+ * in the project will be accessible through VFS_MOUNTTAB[idx]
+ * and through the shell mount, umount and format commands.
+ * When disabled, mounttab is transparently not operational and
+ * each vfs_mounttab_t defaults to a simple vfs_mount_t that must
+ * be explicitly accessed by reference (else discarded by linker).
+ *
+ * To enable, the arch must define
+ * in the .data section of its linker script:
+ *    PROVIDE(_vfs_mounttab_start = .);
+ *    KEEP( *(.data.vfs_mounttab) );
+ *    PROVIDE(_vfs_mounttab_end = .);
+ * in cpu_conf.h, i.e.:
+ *  #if defined(MODULE_VFS)
+ *   extern unsigned _vfs_mounttab_start[], _vfs_mounttab_end[]; //as provided in linker script.
+ *   #define __VFS_MOUNTTAB_SECTION__	__attribute__((section(".data.vfs_mounttab"), used))
+ *                                      //'used' keyword prevents discard of unrefenced symbols.
+ *   #define VFS_MOUNTTAB_SZ	        (unsigned int)(((unsigned)_vfs_mounttab_end-(unsigned)_vfs_mounttab_start) / sizeof(vfs_mount_t))
+ *   #define VFS_MOUNTTAB	            ((vfs_mount_t*)_vfs_mounttab_start)
+ *  #endif
+ *
+ * Disabled by default since the feature is optional and arch dependent.
+ */
+#include "cpu_conf.h"
+#ifndef __VFS_MOUNTTAB_SECTION__
+#define __VFS_MOUNTTAB_SECTION__
+#define VFS_MOUNTTAB_SZ	0
+#undef  VFS_MOUNTTAB
+#elif !defined(VFS_MOUNTTAB_SZ) || !defined(VFS_MOUNTTAB)
+#error "Please define VFS_MOUNTTAB* macros in cpu_conf.h or leave them completely undefined"
+#endif
+#define vfs_mounttab_t vfs_mount_t __VFS_MOUNTTAB_SECTION__
+
+
 #ifndef VFS_MAX_OPEN_FILES
 /**
  * @brief Maximum number of simultaneous open files
