@@ -37,7 +37,7 @@
 #include "sx127x_registers.h"
 #include "sx127x_netdev.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG (1)
 #include "debug.h"
 
 /* Internal functions */
@@ -47,6 +47,11 @@ static void _init_timers(sx127x_t *dev);
 static void _on_tx_timeout(void *arg);
 static void _on_rx_timeout(void *arg);
 
+#ifdef _APS_OSS7_
+/* FIXME: moved and see note in sx127x_internal.h */
+#define __STATIC_DIO_ISR__
+#else
+#define __STATIC_DIO_ISR__ static
 /* SX127X DIO interrupt handlers initialization */
 #ifndef SX127X_USE_DIO_MULTI
 static void sx127x_on_dio0_isr(void *arg);
@@ -55,6 +60,7 @@ static void sx127x_on_dio2_isr(void *arg);
 static void sx127x_on_dio3_isr(void *arg);
 #else
 static void sx127x_on_dio_multi_isr(void *arg);
+#endif
 #endif
 
 void sx127x_setup(sx127x_t *dev, const sx127x_params_t *params)
@@ -107,6 +113,13 @@ int sx127x_init(sx127x_t *dev)
         return -SX127X_ERR_SPI;
     }
 
+    /* reset options */
+    dev->options = 0;
+
+    /* set default options */
+    sx127x_set_option(dev, SX127X_OPT_TELL_RX_END, true);
+    sx127x_set_option(dev, SX127X_OPT_TELL_TX_END, true);
+
     /* Check presence of SX127X */
     if (sx127x_check_version(dev) < 0) {
         DEBUG("[sx127x] error: no valid device found\n");
@@ -116,9 +129,12 @@ int sx127x_init(sx127x_t *dev)
     _init_timers(dev);
     xtimer_usleep(1000); /* wait 1 millisecond */
 
+#ifdef PLATFORM_SX127X_USE_RESET_PIN
     sx127x_reset(dev);
+#endif
 
 #if defined(MODULE_SX1276)
+    sx127x_set_op_mode(dev, SX127X_RF_OPMODE_STANDBY);
     sx1276_rx_chain_calibration(dev);
 #endif
     sx127x_set_op_mode(dev, SX127X_RF_OPMODE_SLEEP);
@@ -133,23 +149,92 @@ int sx127x_init(sx127x_t *dev)
 
 void sx127x_init_radio_settings(sx127x_t *dev)
 {
-    DEBUG("[sx127x] initializing radio settings\n");
-    sx127x_set_channel(dev, SX127X_CHANNEL_DEFAULT);
-    sx127x_set_modem(dev, SX127X_MODEM_DEFAULT);
-    sx127x_set_tx_power(dev, SX127X_RADIO_TX_POWER);
-    sx127x_set_bandwidth(dev, LORA_BW_DEFAULT);
-    sx127x_set_spreading_factor(dev, LORA_SF_DEFAULT);
-    sx127x_set_coding_rate(dev, LORA_CR_DEFAULT);
-    sx127x_set_crc(dev, LORA_PAYLOAD_CRC_ON_DEFAULT);
-    sx127x_set_freq_hop(dev, LORA_FREQUENCY_HOPPING_DEFAULT);
-    sx127x_set_hop_period(dev, LORA_FREQUENCY_HOPPING_PERIOD_DEFAULT);
-    sx127x_set_fixed_header_len_mode(dev, LORA_FIXED_HEADER_LEN_MODE_DEFAULT);
-    sx127x_set_iq_invert(dev, LORA_IQ_INVERTED_DEFAULT);
-    sx127x_set_payload_length(dev, LORA_PAYLOAD_LENGTH_DEFAULT);
-    sx127x_set_preamble_length(dev, LORA_PREAMBLE_LENGTH_DEFAULT);
-    sx127x_set_symbol_timeout(dev, LORA_SYMBOL_TIMEOUT_DEFAULT);
-    sx127x_set_rx_single(dev, SX127X_RX_SINGLE);
-    sx127x_set_tx_timeout(dev, SX127X_TX_TIMEOUT_DEFAULT);
+    switch (dev->settings.modem) {
+        case SX127X_MODEM_FSK:
+
+            sx127x_reg_write(dev, SX127X_REG_OPMODE, 0x00); // FSK, hi freq, sleep
+            sx127x_reg_write(dev, SX127X_REG_PARAMP, (2 << 5) | 0x09); // BT=0.5 and PaRamp=40us
+            sx127x_reg_write(dev, SX127X_REG_LNA, 0x23); // highest gain for now, for 868 // TODO LnaBoostHf consumes 150% current compared to default LNA
+
+            // TODO validate:
+            // - RestartRxOnCollision (off for now)
+            // - RestartRxWith(out)PllLock flags: set on freq change
+            // - AfcAutoOn: default for now
+            // - AgcAutoOn: default for now (use AGC)
+            // - RxTrigger: default for now
+            sx127x_reg_write(dev, SX127X_REG_RXCONFIG, 0x0E);
+
+            sx127x_reg_write(dev, SX127X_REG_RSSICONFIG, 0x02); // TODO no RSSI offset for now + using 8 samples for smoothing
+            //  sx127x_reg_write(dev, SX127X_REG_RSSICOLLISION, 0); // TODO not used for now
+            sx127x_reg_write(dev, SX127X_REG_RSSITHRESH, 0xFF); // TODO using -128 dBm for now
+
+            //  write_reg(REG_AFCBW, 0); // TODO not used for now (AfcAutoOn not set)
+            //  write_reg(REG_AFCFEI, 0); // TODO not used for now (AfcAutoOn not set)
+            //  write_reg(REG_AFCMSB, 0); // TODO not used for now (AfcAutoOn not set)
+            //  write_reg(REG_AFCLSB, 0); // TODO not used for now (AfcAutoOn not set)
+            //  write_reg(REG_FEIMSB, 0); // TODO freq offset not used for now
+            //  write_reg(REG_FEILSB, 0); // TODO freq offset not used for now
+            sx127x_reg_write(dev, SX127X_REG_PREAMBLEDETECT, 0xCA); // TODO validate PreambleDetectorSize (2 now) and PreambleDetectorTol (10 now)
+
+            sx127x_reg_write(dev, SX127X_REG_SYNCCONFIG, 0x11); // no AutoRestartRx, default PreambePolarity, enable syncword of 2 bytes
+
+            sx127x_reg_write(dev, SX127X_REG_PACKETCONFIG1, 0x08); // fixed length (unlimited length mode), CRC auto clear OFF, whitening and CRC disabled (not compatible), addressFiltering off.
+            sx127x_reg_write(dev, SX127X_REG_PACKETCONFIG2, 0x40); // packet mode
+            sx127x_reg_write(dev, SX127X_REG_PAYLOADLENGTH, 0x00); // unlimited length mode (in combination with PacketFormat = 0), so we can encode/decode length byte in software
+            sx127x_reg_write(dev, SX127X_REG_FIFOTHRESH, 0x83); // tx start condition true when there is at least one byte in FIFO (we are in standby/sleep when filling FIFO anyway)
+                                                                // For RX the threshold is set to 4 since this is the minimum length of a D7 packet (number of bytes in FIFO >= FifoThreshold + 1).
+
+            sx127x_reg_write(dev, SX127X_REG_SEQCONFIG1, 0x40); // force off for now
+            //  write_reg(REG_SEQCONFIG2, 0); // not used for now
+            //  write_reg(REG_TIMERRESOL, 0); // not used for now
+            //  write_reg(REG_TIMER1COEF, 0); // not used for now
+            //  write_reg(REG_TIMER2COEF, 0); // not used for now
+            //  write_reg(REG_IMAGECAL, 0); // TODO not used for now
+            //  write_reg(REG_LOWBAT, 0); // TODO not used for now
+
+            sx127x_reg_write(dev, SX127X_REG_DIOMAPPING1, 0x0C); // DIO0 = 00 | DIO1 = 00 | DIO2 = 0b11 => interrupt on sync detect | DIO3 = 00
+            sx127x_reg_write(dev, SX127X_REG_DIOMAPPING2, 0x30); // ModeReady TODO configure for RSSI interrupt when doing CCA?
+            //  write_reg(REG_PLLHOP, 0); // TODO might be interesting for channel hopping
+            //  write_reg(REG_TCXO, 0); // default
+            //  write_reg(REG_PADAC, 0); // default
+            //  write_reg(REG_FORMERTEMP, 0); // not used for now
+            //  write_reg(REG_BITRATEFRAC, 0); // default
+            //  write_reg(REG_AGCREF, 0); // default, TODO validate
+            //  write_reg(REG_AGCTHRESH1, 0); // not used for now
+            //  write_reg(REG_AGCTHRESH2, 0); // not used for now
+            //  write_reg(REG_AGCTHRESH3, 0); // not used for now
+            //  write_reg(REG_PLL, 0); // not used for now
+
+            sx127x_set_tx_timeout(dev, SX127X_TX_TIMEOUT_DEFAULT);
+            sx127x_set_modem(dev, SX127X_MODEM_DEFAULT);
+            sx127x_set_channel(dev, SX127X_CHANNEL_DEFAULT);
+            sx127x_set_bandwidth(dev, SX127X_BW_DEFAULT);
+            sx127x_set_payload_length(dev, SX127X_PAYLOAD_LENGTH);
+            sx127x_set_tx_power(dev, SX127X_RADIO_TX_POWER);
+            break;
+        case SX127X_MODEM_LORA:
+            DEBUG("[sx127x] initializing radio settings\n");
+            sx127x_set_channel(dev, SX127X_CHANNEL_DEFAULT);
+            sx127x_set_modem(dev, SX127X_MODEM_DEFAULT);
+            sx127x_set_tx_power(dev, SX127X_RADIO_TX_POWER);
+            sx127x_set_bandwidth(dev, LORA_BW_DEFAULT);
+            sx127x_set_spreading_factor(dev, LORA_SF_DEFAULT);
+            sx127x_set_coding_rate(dev, LORA_CR_DEFAULT);
+            sx127x_set_crc(dev, LORA_PAYLOAD_CRC_ON_DEFAULT);
+            sx127x_set_freq_hop(dev, LORA_FREQUENCY_HOPPING_DEFAULT);
+            sx127x_set_hop_period(dev, LORA_FREQUENCY_HOPPING_PERIOD_DEFAULT);
+            sx127x_set_fixed_header_len_mode(dev, LORA_FIXED_HEADER_LEN_MODE_DEFAULT);
+            sx127x_set_iq_invert(dev, LORA_IQ_INVERTED_DEFAULT);
+            sx127x_set_payload_length(dev, LORA_PAYLOAD_LENGTH_DEFAULT);
+            sx127x_set_preamble_length(dev, LORA_PREAMBLE_LENGTH_DEFAULT);
+            sx127x_set_symbol_timeout(dev, LORA_SYMBOL_TIMEOUT_DEFAULT);
+            sx127x_set_rx_single(dev, SX127X_RX_SINGLE);
+            sx127x_set_tx_timeout(dev, SX127X_TX_TIMEOUT_DEFAULT);
+            break;
+        default:
+            assert(false);//not implemented
+            break;
+    }
 }
 
 uint32_t sx127x_random(sx127x_t *dev)
@@ -200,22 +285,30 @@ static void sx127x_on_dio_isr(sx127x_t *dev, sx127x_flags_t flag)
 }
 
 #ifndef SX127X_USE_DIO_MULTI
-static void sx127x_on_dio0_isr(void *arg)
+__STATIC_DIO_ISR__ void sx127x_on_dio0_isr(void *arg)
 {
+#ifdef _APS_OSS7_
+    sx127x_t *dev = (sx127x_t*) arg;
+    gpio_irq_disable(dev->params.dio0_pin);
+#endif
     sx127x_on_dio_isr((sx127x_t*) arg, SX127X_IRQ_DIO0);
 }
 
-static void sx127x_on_dio1_isr(void *arg)
+__STATIC_DIO_ISR__ void sx127x_on_dio1_isr(void *arg)
 {
+#ifdef _APS_OSS7_
+    sx127x_t *dev = (sx127x_t*) arg;
+    gpio_irq_disable(dev->params.dio1_pin);
+#endif
     sx127x_on_dio_isr((sx127x_t*) arg, SX127X_IRQ_DIO1);
 }
 
-static void sx127x_on_dio2_isr(void *arg)
+__STATIC_DIO_ISR__ void sx127x_on_dio2_isr(void *arg)
 {
     sx127x_on_dio_isr((sx127x_t*) arg, SX127X_IRQ_DIO2);
 }
 
-static void sx127x_on_dio3_isr(void *arg)
+__STATIC_DIO_ISR__ void sx127x_on_dio3_isr(void *arg)
 {
     sx127x_on_dio_isr((sx127x_t*) arg, SX127X_IRQ_DIO3);
 }

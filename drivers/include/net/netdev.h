@@ -215,6 +215,7 @@ enum {
     NETDEV_TYPE_BLE,
     NETDEV_TYPE_CC110X,
     NETDEV_TYPE_LORA,
+    NETDEV_TYPE_FSK,
     NETDEV_TYPE_NRFMIN,
     NETDEV_TYPE_SLIP,
     NETDEV_TYPE_ESP_NOW,
@@ -240,6 +241,7 @@ typedef enum {
     NETDEV_EVENT_CRC_ERROR,                 /**< wrong CRC */
     NETDEV_EVENT_FHSS_CHANGE_CHANNEL,       /**< channel changed */
     NETDEV_EVENT_CAD_DONE,                  /**< channel activity detection done */
+    NETDEV_EVENT_TX_REFILL_NEEDED,          /**< new data needed to transmit without discontinuity */
     /* expand this list if needed */
 } netdev_event_t;
 
@@ -252,6 +254,11 @@ struct netdev_radio_rx_info {
     int16_t rssi;       /**< RSSI of a received packet in dBm */
     uint8_t lqi;        /**< LQI of a received packet */
 };
+
+/**
+ * @brief   Forward declaration for netdev_radio_rx_info struct
+ */
+typedef struct netdev_radio_rx_info netdev_radio_rx_info_t;
 
 /**
  * @brief   Forward declaration for netdev struct
@@ -462,6 +469,12 @@ static inline int netdev_set_notsup(netdev_t *dev, netopt_t opt,
     return -ENOTSUP;
 }
 
+typedef struct xcvr_handle xcvr_handle_t;
+
+/**
+ * @brief   Reference to the transceiver handle struct
+ */
+extern xcvr_handle_t xcvr;
 
 #ifdef __cplusplus
 }
