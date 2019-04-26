@@ -124,6 +124,9 @@ endif
 ifneq (,$(filter devfs,$(USEMODULE)))
   DIRS += fs/devfs
 endif
+ifneq (,$(filter tmpfs,$(USEMODULE)))
+  DIRS += fs/tmpfs
+endif
 ifneq (,$(filter l2filter,$(USEMODULE)))
   DIRS += net/link_layer/l2filter
 endif

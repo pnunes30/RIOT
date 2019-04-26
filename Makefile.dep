@@ -742,6 +742,11 @@ ifneq (,$(filter devfs,$(USEMODULE)))
   USEMODULE += vfs
 endif
 
+ifneq (,$(filter tmpfs,$(USEMODULE)))
+  USEMODULE += vfs
+  USEMODULE += memarray
+endif
+
 ifneq (,$(filter vfs,$(USEMODULE)))
   USEMODULE += posix_headers
   ifeq (native, $(BOARD))
