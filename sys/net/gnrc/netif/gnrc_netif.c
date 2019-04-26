@@ -1182,9 +1182,10 @@ static void _init_from_device(gnrc_netif_t *netif)
     switch (netif->device_type) {
 #if defined(MODULE_NETDEV_IEEE802154) || defined(MODULE_NRFMIN) || \
     defined(MODULE_XBEE) || defined(MODULE_ESP_NOW) || \
-    defined(MODULE_GNRC_SIXLOENC)
+    defined(MODULE_CC110X) || defined(MODULE_GNRC_SIXLOENC)
         case NETDEV_TYPE_IEEE802154:
         case NETDEV_TYPE_NRFMIN:
+        case NETDEV_TYPE_CC110X:
 #ifdef MODULE_GNRC_SIXLOWPAN_IPHC
             netif->flags |= GNRC_NETIF_FLAGS_6LO_HC;
 #endif
@@ -1193,9 +1194,11 @@ static void _init_from_device(gnrc_netif_t *netif)
 #ifdef MODULE_GNRC_IPV6
             res = dev->driver->get(dev, NETOPT_MAX_PACKET_SIZE, &tmp, sizeof(tmp));
             assert(res == sizeof(tmp));
+            DEBUG("NETOPT_MAX_PACKET_SIZE = %x\n",tmp);
 #ifdef MODULE_GNRC_SIXLOWPAN
             netif->ipv6.mtu = IPV6_MIN_MTU;
             netif->sixlo.max_frag_size = tmp;
+            DEBUG("netif->sixlo.max_frag_size = %x\n",tmp);
 #else
             netif->ipv6.mtu = tmp;
 #endif
@@ -1221,6 +1224,7 @@ static void _init_from_device(gnrc_netif_t *netif)
             break;
 #endif
         default:
+            DEBUG("_init_from_device: default (%d)\n",netif->device_type);
 #ifdef MODULE_GNRC_IPV6
             res = dev->driver->get(dev, NETOPT_MAX_PACKET_SIZE, &tmp, sizeof(tmp));
             if (res < 0) {
@@ -1362,6 +1366,7 @@ static void *_gnrc_netif_thread(void *args)
 static void _pass_on_packet(gnrc_pktsnip_t *pkt)
 {
     /* throw away packet if no one is interested */
+    DEBUG("gnrc_netif: try to forward packet of type %i\n", pkt->type);
     if (!gnrc_netapi_dispatch_receive(pkt->type, GNRC_NETREG_DEMUX_CTX_ALL, pkt)) {
         DEBUG("gnrc_netif: unable to forward packet of type %i\n", pkt->type);
         gnrc_pktbuf_release(pkt);
@@ -1379,6 +1384,7 @@ static void _event_cb(netdev_t *dev, netdev_event_t event)
 
         if (msg_send(&msg, netif->pid) <= 0) {
             puts("gnrc_netif: possibly lost interrupt.");
+            /* APS FIXME: if queue full, the low level driver is not informed, and can't release its resources...*/
         }
     }
     else {
