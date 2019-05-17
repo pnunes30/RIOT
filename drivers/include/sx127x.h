@@ -111,7 +111,11 @@ extern "C" {
 #define SX127X_IRQ_DIO4                  (1<<4)  /**< DIO4 IRQ */
 #define SX127X_IRQ_DIO5                  (1<<5)  /**< DIO5 IRQ */
 #ifndef SX127X_DIO_PULL_MODE
+#ifdef _APS_OSS7_
+#define SX127X_DIO_PULL_MODE             (GPIO_IN) /**< pull down DIOx */
+#else
 #define SX127X_DIO_PULL_MODE             (GPIO_IN_PD) /**< pull down DIOx */
+#endif
 #endif
 /** @} */
 
