@@ -49,6 +49,8 @@
 #define MINLEN_SUBACK           (8U)
 #define MINLEN_UNSUBACK         (4U)
 #define MINLEN_GWINFO           (3U)
+#define MINLEN_WILLTOPICREQ     (2U)
+#define MINLEN_WILLMSGREQ       (2U)
 
 #define IDPOS_REGACK            (4U)
 #define IDPOS_PUBACK            (4U)
@@ -63,10 +65,12 @@
 enum {
     UNINITIALIZED = 0,      /**< connection context is not initialized */
     NOTCON,                 /**< not connected to any gateway */
-    SEARCHING_GW,            /**< searching for an active gateway */
+    SEARCHING_GW,           /**< searching for an active gateway */
     CONNECTING,             /**< connection is being setup */
     CONNECTED,              /**< connection is established */
     TEARDOWN,               /**< connection is being torn down */
+    SLEEPING,               /**< connection is up, device wants to be asleep */
+    SLEEP,                  /**< connection is up, device is in asleep state */
 };
 
 /* the main handler thread needs a stack and a message queue */
@@ -343,15 +347,30 @@ static void _on_keepalive_evt(void *arg)
 
     mutex_lock(&con->lock);
 
-    if (con->state != CONNECTED) {
-        mutex_unlock(&con->lock);
-        return;
+    if (con->state != CONNECTED)
+    {
+        if(con->state != SLEEP)
+        {
+            mutex_unlock(&con->lock);
+            return;
+        }
     }
-
     if (con->keepalive_retry_cnt) {
         /* (re)send keep alive ping and set dedicated retransmit timer */
-        uint8_t ping[2] = { 2, MQTTSN_PINGREQ };
-        send_unicast(con, ping, sizeof(ping));
+        if (con->state == SLEEP)
+        {
+            size_t id_len = strlen(con->cli_id);
+            uint8_t ping[ASYMCUTE_ID_MAXLEN + 3];
+            ping[0] = (uint8_t)(id_len + 2);
+            ping[1] = MQTTSN_PINGREQ;
+            memcpy(&ping[2], con->cli_id, id_len);
+            send_unicast(con, ping, (size_t)(ping[0]));
+        }
+        else
+        {
+            uint8_t ping[2] = { 2, MQTTSN_PINGREQ };
+            send_unicast(con, ping, sizeof(ping));
+        }
         con->keepalive_retry_cnt--;
         event_timeout_set(&con->keepalive_timer, RETRY_TO);
         mutex_unlock(&con->lock);
@@ -427,18 +446,25 @@ static void _on_connack(asymcute_con_t *con, const uint8_t *data, size_t len)
 static void _on_disconnect(asymcute_con_t *con, size_t len)
 {
     mutex_lock(&con->lock);
-
     /* we might have triggered the DISCONNECT process ourselves, so make sure
      * the pending request is being handled */
     asymcute_req_t *req = _req_preprocess(con, len, MINLEN_DISCONNECT, NULL, 0);
 
-    /* put the connection back to NOTCON in any case and let the user know */
-    _disconnect(con, NOTCON);
-    if (req) {
-        mutex_unlock(&req->lock);
+    if (con->state != SLEEPING) {
+        /* put the connection back to NOTCON in any case and let the user know */
+        _disconnect(con, NOTCON);
+        if (req) {
+            mutex_unlock(&req->lock);
+        }
+        mutex_unlock(&con->lock);
+        con->user_cb(req, ASYMCUTE_DISCONNECTED);
     }
-    mutex_unlock(&con->lock);
-    con->user_cb(req, ASYMCUTE_DISCONNECTED);
+    else {
+        con->state = SLEEP;
+        mutex_unlock(&req->lock);
+        mutex_unlock(&con->lock);
+        con->user_cb(req, ASYMCUTE_ASLEEP);
+    }
 
 }
 
@@ -604,6 +630,40 @@ static void _on_unsuback(asymcute_con_t *con, const uint8_t *data, size_t len)
     con->user_cb(req, ASYMCUTE_UNSUBSCRIBED);
 }
 
+static void _on_willtopicreq(asymcute_con_t *con, const uint8_t *data, size_t len)
+{
+    mutex_lock(&con->lock);
+
+    asymcute_req_t *req = _req_preprocess(con, len, MINLEN_WILLTOPICREQ, NULL, 0);
+    if (req == NULL) {
+        DEBUG("_on_willtopicreq ERROR req = NULL\n");
+        mutex_unlock(&con->lock);
+        return;
+    }
+
+    /* notify user */
+    mutex_unlock(&req->lock);
+    mutex_unlock(&con->lock);
+    con->user_cb(con, ASYMCUTE_WILLTOPIC);
+}
+
+static void _on_willmsgreq(asymcute_con_t *con, const uint8_t *data, size_t len)
+{
+    mutex_lock(&con->lock);
+
+    asymcute_req_t *req = _req_preprocess(con, len, MINLEN_WILLMSGREQ, NULL, 0);
+    if (req == NULL) {
+        DEBUG("_on_willmsgreq ERROR req = NULL\n");
+        mutex_unlock(&con->lock);
+        return;
+    }
+
+    /* notify user */
+    mutex_unlock(&req->lock);
+    mutex_unlock(&con->lock);
+	con->user_cb(con, ASYMCUTE_WILLMSG);
+}
+
 static void msg_handler(void *arg)
 {
     asymcute_con_t *con = (asymcute_con_t *)arg;
@@ -672,6 +732,12 @@ static void msg_handler(void *arg)
             break;
         case MQTTSN_UNSUBACK:
             _on_unsuback(con, con->rxbuf, len);
+            break;
+        case MQTTSN_WILLTOPICREQ:
+            _on_willtopicreq(con, con->rxbuf, con->rxlen);
+            break;
+        case MQTTSN_WILLMSGREQ:
+            _on_willmsgreq(con, con->rxbuf, con->rxlen);
             break;
         default:
             break;
@@ -869,10 +935,6 @@ int asymcute_connect(asymcute_con_t *con, asymcute_req_t *req, const char *cli_i
     int ret = ASYMCUTE_OK;
     size_t id_len = strlen(cli_id);
 
-    /* the will feature is not yet supported */
-    if (will) {
-        return ASYMCUTE_NOTSUP;
-    }
     /* make sure the client ID will fit into the dedicated buffer */
     if ((id_len < MQTTSN_CLI_ID_MINLEN) || (id_len > MQTTSN_CLI_ID_MAXLEN)) {
         return ASYMCUTE_OVERFLOW;
@@ -880,8 +942,11 @@ int asymcute_connect(asymcute_con_t *con, asymcute_req_t *req, const char *cli_i
     /* check if the context is not already connected to any gateway */
     mutex_lock(&con->lock);
     if (con->state != NOTCON) {
-        ret = ASYMCUTE_GWERR;
-        goto end;
+        if(con->state != SLEEP)
+        {
+            ret = ASYMCUTE_GWERR;
+            goto end;
+        }
     }
     /* get mutual access to the request context */
     if (mutex_trylock(&req->lock) != 1) {
@@ -895,6 +960,7 @@ int asymcute_connect(asymcute_con_t *con, asymcute_req_t *req, const char *cli_i
     req->data[0] = (uint8_t)(id_len + 6);
     req->data[1] = MQTTSN_CONNECT;
     req->data[2] = ((clean) ? MQTTSN_CS : 0);
+    if (will) req->data[2] |= MQTTSN_WILL;
     req->data[3] = PROTOCOL_VERSION;
     byteorder_htobebufs(&req->data[4], ASYMCUTE_KEEPALIVE);
     memcpy(&req->data[6], cli_id, id_len);
@@ -953,7 +1019,7 @@ end:
     return ret;
 }
 
-int asymcute_disconnect(asymcute_con_t *con, asymcute_req_t *req)
+int asymcute_disconnect(asymcute_con_t *con, asymcute_req_t *req, uint16_t duration)
 {
     assert(con);
     assert(req);
@@ -972,15 +1038,28 @@ int asymcute_disconnect(asymcute_con_t *con, asymcute_req_t *req)
         goto end;
     }
 
-    /* put connection into TEARDOWN state */
-    _disconnect(con, TEARDOWN);
-
     /* prepare and send disconnect message */
-    req->msg_id = 0;
-    req->data[0] = 2;
-    req->data[1] = MQTTSN_DISCONNECT;
-    req->data_len = 2;
-    _req_send(req, con, _on_discon_timeout);
+    if (duration == NULL)
+    {
+        /* put connection into TEARDOWN state */
+        _disconnect(con, TEARDOWN);
+
+        req->msg_id = 0;
+        req->data[0] = 2;
+        req->data[1] = MQTTSN_DISCONNECT;
+        req->data_len = 2;
+        _req_send(req, con, _on_discon_timeout);
+    }
+    else
+    {
+        req->msg_id = 0;
+        req->data[0] = 4;
+        req->data[1] = MQTTSN_DISCONNECT;
+        byteorder_htobebufs(&req->data[2], duration);
+        req->data_len = 4;
+        con->state = SLEEPING;
+        _req_send(req, con, _on_discon_timeout);
+    }
 
 end:
     mutex_unlock(&con->lock);
@@ -1058,7 +1137,7 @@ int asymcute_publish(asymcute_con_t *con, asymcute_req_t *req,
     }
     /* check if we are connected to a gateway */
     mutex_lock(&con->lock);
-    if (!asymcute_is_connected(con)) {
+    if (asymcute_is_connected(con) != 1) {
         ret = ASYMCUTE_GWERR;
         goto end;
     }
@@ -1174,6 +1253,75 @@ int asymcute_unsubscribe(asymcute_con_t *con, asymcute_req_t *req,
     /* prepare and send UNSUBSCRIBE message */
     _compile_sub_unsub(req, con, sub, MQTTSN_UNSUBSCRIBE);
     _req_send(req, con, NULL);
+
+end:
+    mutex_unlock(&con->lock);
+    return ret;
+}
+
+int asymcute_willtopic(asymcute_con_t *con, asymcute_req_t *req,
+                       asymcute_will_t *will, uint8_t flags)
+{
+    assert(con);
+    assert(req);
+    assert(will);
+
+    int ret = ASYMCUTE_OK;
+
+    /* check if we are connecting to a gateway */
+    mutex_lock(&con->lock);
+    if (con->state != CONNECTING) {
+        ret = ASYMCUTE_GWERR;
+        goto end;
+    }
+    /* make sure request context is clear to be used */
+    if (mutex_trylock(&req->lock) != 1) {
+        ret = ASYMCUTE_BUSY;
+        goto end;
+    }
+    /* use only QoS and retain flags */
+    flags &= 0x70;
+
+    req->data[0] = (size_t)(strlen(will->topic)+3);
+    req->data[1] = MQTTSN_WILLTOPIC;
+    req->data[2] = flags;
+    memcpy(&req->data[3], will->topic, strlen(will->topic));
+    req->data_len = (size_t)req->data[0];
+    req->broadcast = false;
+    _req_send(req, con, _on_con_timeout);
+
+end:
+    mutex_unlock(&con->lock);
+    return ret;
+}
+
+int asymcute_willmsg(asymcute_con_t *con, asymcute_req_t *req,
+                     asymcute_will_t *will)
+{
+    assert(con);
+    assert(req);
+    assert(will);
+
+    int ret = ASYMCUTE_OK;
+
+    /* check if we are connecting to a gateway */
+    mutex_lock(&con->lock);
+    if (con->state != CONNECTING) {
+        ret = ASYMCUTE_GWERR;
+        goto end;
+    }
+    /* make sure request context is clear to be used */
+    if (mutex_trylock(&req->lock) != 1) {
+        ret = ASYMCUTE_BUSY;
+        goto end;
+    }
+
+    req->data[0] = (size_t)(will->msg_len+2);
+    req->data[1] = MQTTSN_WILLMSG;
+    memcpy(&req->data[2], will->msg, will->msg_len);
+    req->data_len = (size_t)req->data[0];
+    req->broadcast = false;
+    _req_send(req, con, _on_con_timeout);
 
 end:
     mutex_unlock(&con->lock);

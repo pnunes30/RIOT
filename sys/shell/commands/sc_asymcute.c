@@ -272,7 +272,7 @@ static int _cmd_disconnect(int argc, char **argv)
         return 1;
     }
 
-    if (asymcute_disconnect(&_connection, req) != ASYMCUTE_OK) {
+    if (asymcute_disconnect(&_connection, req, NULL) != ASYMCUTE_OK) {
         puts("error: failed to issue DISCONNECT request");
         return 1;
     }

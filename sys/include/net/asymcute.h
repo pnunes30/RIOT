@@ -28,7 +28,6 @@
  *
  * Missing features:
  * - Gateway discovery process not implemented
- * - Last will feature not implemented
  * - No support for QoS level 2
  * - No support for wildcard characters in topic names when subscribing
  * - Actual granted QoS level on subscription is ignored
@@ -136,7 +135,7 @@ extern "C" {
  *
  * For the default value, see spec v1.2, section 7.2 -> T_RETRY: 10 to 15 sec
  */
-#define ASYMCUTE_T_RETRY            (100U)       /* -> 10 sec */
+#define ASYMCUTE_T_RETRY            (10U)       /* -> 10 sec */
 #endif
 
 #ifndef ASYMCUTE_N_RETRY
@@ -167,6 +166,7 @@ enum {
     ASYMCUTE_BUSY       = -4,       /**< error: context already in use */
     ASYMCUTE_REGERR     = -5,       /**< error: registration invalid */
     ASYMCUTE_SUBERR     = -6,       /**< error: subscription invalid */
+    ASYMCUTE_WILLFLAG   = -7,       /**< error: flags are not correctly set */
 };
 
 /**
@@ -182,6 +182,9 @@ enum {
     ASYMCUTE_PUBLISHED,             /**< data was published */
     ASYMCUTE_SUBSCRIBED,            /**< client was subscribed to topic */
     ASYMCUTE_UNSUBSCRIBED,          /**< client was unsubscribed from topic */
+    ASYMCUTE_WILLTOPIC,             /**< client should provide a will topic name */
+    ASYMCUTE_WILLMSG,               /**< client should provide will msg */
+    ASYMCUTE_ASLEEP,                /**< client is asleep */
 };
 
 /**
@@ -324,8 +327,8 @@ struct asymcute_sub {
  * @brief   Data structure for defining a last will
  */
 struct asymcute_will {
-    const char *topic;          /**< last will topic */
-    void *msg;                  /**< last will message content */
+    char topic[ASYMCUTE_TOPIC_MAXLEN + 1];    /**< last will topic */
+    const char *msg;            /**< last will message content */
     size_t msg_len;             /**< length of last will message content */
 };
 
@@ -479,7 +482,7 @@ bool asymcute_is_connected(const asymcute_con_t *con);
  * @param[in] cli_id    client ID to register with the gateway
  * @param[in] addr      address of the gateway (IP address string representation or D7A UID address)
  * @param[in] clean     set `true` to start a clean session
- * @param[in] will      last will (currently not implemented)
+ * @param[in] will      last will
  *
  * @return  ASYMCUTE_OK if CONNECT message has been sent
  * @return  ASYMCUTE_NOTSUP if last will was given (temporary until implemented)
@@ -500,7 +503,7 @@ int asymcute_connect(asymcute_con_t *con, asymcute_req_t *req, const char *cli_i
  * @return  ASYMCUTE_GWERR if connection context is not connected
  * @return  ASYMCUTE_BUSY if the given request context is already in use
  */
-int asymcute_disconnect(asymcute_con_t *con, asymcute_req_t *req);
+int asymcute_disconnect(asymcute_con_t *con, asymcute_req_t *req, uint16_t duration);
 
 /**
  * @brief   Register a given topic with the connected gateway
@@ -575,6 +578,35 @@ int asymcute_subscribe(asymcute_con_t *con, asymcute_req_t *req,
  */
 int asymcute_unsubscribe(asymcute_con_t *con, asymcute_req_t *req,
                          asymcute_sub_t *sub);
+
+/**
+ * @brief   Send a will topic
+ *
+ * @param[in] con       connection to use
+ * @param[in,out] req   request context used for sending the will topic
+ * @param[in] will      will structure to use
+ * @param[in] flags     additional flags (QoS level and Retain)
+ *
+ * @return  ASYMCUTE_OK if message has been sent
+ * @return  ASYMCUTE_GWERR if not connected to a gateway
+ * @return  ASYMCUTE_BUSY if the given request context is already in use
+ */
+int asymcute_willtopic(asymcute_con_t *con, asymcute_req_t *req,
+                       asymcute_will_t *will, uint8_t flags);
+
+/**
+ * @brief   Send a will msg
+ *
+ * @param[in] con       connection to use
+ * @param[in,out] req   request context used for sending the will topic
+ * @param[in] will      will structure to use
+ *
+ * @return  ASYMCUTE_OK if message has been sent
+ * @return  ASYMCUTE_GWERR if not connected to a gateway
+ * @return  ASYMCUTE_BUSY if the given request context is already in use
+ */
+int asymcute_willmsg(asymcute_con_t *con, asymcute_req_t *req,
+                     asymcute_will_t *will);
 
 #ifdef __cplusplus
 }
