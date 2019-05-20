@@ -6,7 +6,6 @@
  * directory for more details.
  */
 
-#ifndef MODULE_VFS
 /**
  * @{
  * @ingroup     pkg_d7a
@@ -18,400 +17,539 @@
  */
 #include <string.h>
 
-#include "framework/hal/inc/hwsystem.h"
-
-#include "framework/inc/debug.h"
-#include "framework/inc/d7ap.h"
 #include "framework/inc/fs.h"
-#include "framework/inc/ng.h"
-#include "framework/inc/version.h"
-#include "framework/inc/key.h"
+#include "framework/inc/errors.h"
 
-#define D7A_PROTOCOL_VERSION_MAJOR 1
-#define D7A_PROTOCOL_VERSION_MINOR 1
 
-#define FS_ENABLE_SSR_FILTER 0 // TODO always enabled? cmake param?
+#include "vfs.h"
+#include "board.h"
+#include <fcntl.h>
 
-static fs_file_header_t NGDEF(_file_headers)[FRAMEWORK_FS_FILE_COUNT] = { 0 };
-#define file_headers NG(_file_headers)
+#define ENABLE_DEBUG (1)
+#include "debug.h"
 
-static uint16_t NGDEF(_current_data_offset); // TODO we are using offset here instead of pointer because NG does not support pointers, fix later when NG is replaced
-#define current_data_offset NG(_current_data_offset)
 
-static uint8_t NGDEF(_data)[FRAMEWORK_FS_FILESYSTEM_SIZE] = { 0 };
-#define data NG(_data)
+#if (ENABLE_DEBUG)
+static void log_print_data(uint8_t* message, uint32_t length);
+#define DPRINT(...) DEBUG_PRINT(__VA_ARGS__)
+#define DPRINT_DATA(...) log_print_data(__VA_ARGS__)
+#else
+#define DPRINT(...)
+#define DPRINT_DATA(...)
+#endif
 
-static uint16_t NGDEF(_file_offsets)[FRAMEWORK_FS_FILE_COUNT] = { 0 };
-#define file_offsets NG(_file_offsets)
+#define FS_STORAGE_CLASS_NUMOF       (FS_STORAGE_PERMANENT + 1)
 
-static bool NGDEF(_is_fs_init_completed) = false;
-#define is_fs_init_completed NG(_is_fs_init_completed)
+const char _GIT_SHA1[] = "${D7A_GIT_SHA1}";
+const char _APP_NAME[] = "${APPLICATION}";
+
+typedef struct
+{
+    uint32_t length;
+    fs_storage_class_t storage : 2;
+    uint8_t rfu : 6; //FIXME: 'valid' field or invalid storage qualifier?
+    uint32_t addr;
+} fs_file_t;
+
+static fs_file_t files[FRAMEWORK_FS_FILE_COUNT] = { 0 };
+
+static bool is_fs_init_completed = false;  //set in _d7a_verify_magic()
+
+#define IS_SYSTEM_FILE(file_id)         (file_id <= 0x3F)
 
 static fs_modified_file_callback_t file_modified_callbacks[FRAMEWORK_FS_FILE_COUNT] = { NULL };
 
-static fs_d7aactp_callback_t d7aactp_callback = NULL;
+#ifdef MODULE_VFS
+#include "vfs.h"
 
-static inline bool is_file_defined(uint8_t file_id)
+#define MAX_FILE_NAME           32          /* mount name included */
+
+/* ALLOW_FORMAT:
+ *  0: the fs must be mountable and valid, else error
+ *     it reduces the code size by 3,2Kbytes, but might fail on boot
+ *  1: the fs is recreated when not moutable or not valid.
+ *
+ * FORCE_REFORMAT: if (ALLOW_FORMAT==1)
+ *  when the fs is moutable but the magic nok,
+ *  0: just overwrite the files
+ *  1: erase and reformat the whole fs.
+ *     cleaner but old uninited files will be lost.
+ */
+#define ALLOW_FORMAT          1
+#define FORCE_REFORMAT        1 && ALLOW_FORMAT
+
+///////////////////////////////////////
+// The d7a file header is stored in file.
+// filename is $mount/d7f.$id
+// filebody is [$header][$data]
+// where $mount=/|/tmp
+//       length(header) = 12
+//       length($data) == $header.length == $header.allocated_length
+///////////////////////////////////////
+static const vfs_mount_t* const d7a_fs[] = {
+        [FS_STORAGE_TRANSIENT]  = &ARCH_VFS_STORAGE_TRANSIENT,
+        [FS_STORAGE_VOLATILE]   = &ARCH_VFS_STORAGE_VOLATILE,
+        [FS_STORAGE_RESTORABLE] = &ARCH_VFS_STORAGE_RESTORABLE,
+        [FS_STORAGE_PERMANENT]  = &ARCH_VFS_STORAGE_PERMANENT
+};
+
+#define FS_STORAGE_CLASS_NUMOF_CHECK (sizeof(d7a_fs)/sizeof(d7a_fs[0]))
+#else
+
+static uint32_t volatile_data_offset = 0;
+static uint32_t permanent_data_offset = 0;
+
+static blockdevice_t* bd[FS_STORAGE_CLASS_NUMOF];
+
+#endif
+
+/* forward internal declarations */
+#ifdef MODULE_VFS
+//static const char * _file_mount_point(uint8_t file_id, const fs_file_header_t* file_header);
+static int _get_file_name(char* file_name, uint8_t file_id);
+static int _create_file_name(char* file_name, uint8_t file_id, fs_storage_class_t storage_class);
+#endif
+
+static int _fs_init_permanent_systemfiles(fs_systemfiles_t* permanent_systemfiles);
+static int _fs_create_magic(fs_storage_class_t storage_class);
+static int _fs_verify_magic(fs_storage_class_t storage_class, uint8_t* magic_number);
+static int _fs_create_file(uint8_t file_id, fs_storage_class_t storage_class, const uint8_t* initial_data, uint32_t length);
+
+#if (ENABLE_DEBUG)
+static void log_print_data(uint8_t* message, uint32_t length)
 {
-    return file_headers[file_id].length != 0;
-}
-
-static void execute_d7a_action_protocol(uint8_t command_file_id, uint8_t interface_file_id)
-{
-    assert(is_file_defined(command_file_id));
-    // TODO interface_file_id is optional, how do we code this in file header?
-    // for now we assume it's always used
-    assert(is_file_defined(interface_file_id));
-
-    uint8_t* data_ptr = (uint8_t*)(data + file_offsets[interface_file_id]);
-
-    d7ap_session_config_t fifo_config;
-    assert((*data_ptr) == ALP_ITF_ID_D7ASP); // only D7ASP supported for now
-    data_ptr++;
-    // TODO add length field according to spec
-    fifo_config.qos.raw = (*data_ptr); data_ptr++;
-    fifo_config.dormant_timeout = (*data_ptr); data_ptr++;;
-    // TODO add Te field according to spec
-    fifo_config.addressee.ctrl.raw = (*data_ptr); data_ptr++;
-    fifo_config.addressee.access_class = (*data_ptr); data_ptr++;
-    memcpy(&(fifo_config.addressee.id), data_ptr, 8); data_ptr += 8; // TODO assume 8 for now
-
-    if(d7aactp_callback)
-      d7aactp_callback(&fifo_config, (uint8_t*)(data + file_offsets[command_file_id]), file_headers[command_file_id].length);
-}
-
-
-void fs_init(fs_init_args_t* init_args)
-{
-    // TODO store as big endian!
-    if (is_fs_init_completed)
-        return;
-
-    current_data_offset = 0;
-
-    assert(init_args != NULL);
-    assert(init_args->access_profiles_count > 0); // there should be at least one access profile defined
-
-    // 0x00 - UID
-    file_offsets[D7A_FILE_UID_FILE_ID] = current_data_offset;
-    file_headers[D7A_FILE_UID_FILE_ID] = (fs_file_header_t){
-        .file_properties.action_protocol_enabled = 0,
-        .file_properties.storage_class = FS_STORAGE_PERMANENT,
-        .file_permissions = 0, // TODO
-        .length = D7A_FILE_UID_SIZE,
-        .allocated_length = D7A_FILE_UID_SIZE
-    };
-
-    uint64_t id = hw_get_unique_id();
-    uint64_t id_be = __builtin_bswap64(id);
-    memcpy(data + current_data_offset, &id_be, D7A_FILE_UID_SIZE);
-    current_data_offset += D7A_FILE_UID_SIZE;
-
-
-    // 0x02 - Firmware version
-    file_offsets[D7A_FILE_FIRMWARE_VERSION_FILE_ID] = current_data_offset;
-    file_headers[D7A_FILE_FIRMWARE_VERSION_FILE_ID] = (fs_file_header_t){
-        .file_properties.action_protocol_enabled = 0,
-        .file_properties.storage_class = FS_STORAGE_PERMANENT,
-        .file_permissions = 0, // TODO
-        .length = D7A_FILE_FIRMWARE_VERSION_SIZE,
-        .allocated_length = D7A_FILE_FIRMWARE_VERSION_SIZE
-    };
-
-    memset(data + current_data_offset, D7A_PROTOCOL_VERSION_MAJOR, 1); current_data_offset++;
-    memset(data + current_data_offset, D7A_PROTOCOL_VERSION_MINOR, 1); current_data_offset++;
-    memcpy(data + current_data_offset, "APPD7A"/*_APP_NAME*/, D7A_FILE_FIRMWARE_VERSION_APP_NAME_SIZE);
-    current_data_offset += D7A_FILE_FIRMWARE_VERSION_APP_NAME_SIZE;
-    memcpy(data + current_data_offset, "0000001"/*_GIT_SHA1*/, D7A_FILE_FIRMWARE_VERSION_GIT_SHA1_SIZE);
-    current_data_offset += D7A_FILE_FIRMWARE_VERSION_GIT_SHA1_SIZE;
-
-    // 0x0A - DLL Configuration
-    file_offsets[D7A_FILE_DLL_CONF_FILE_ID] = current_data_offset;
-    file_headers[D7A_FILE_DLL_CONF_FILE_ID] = (fs_file_header_t){
-        .file_properties.action_protocol_enabled = 0,
-        .file_properties.storage_class = FS_STORAGE_RESTORABLE,
-        .file_permissions = 0, // TODO
-        .length = D7A_FILE_DLL_CONF_SIZE,
-        .allocated_length = D7A_FILE_DLL_CONF_SIZE
-    };
-
-    data[current_data_offset] = init_args->access_class; current_data_offset += 1; // active access class
-    memset(data + current_data_offset, 0xFF, 2); current_data_offset += 2; // VID; 0xFFFF means not valid
-
-    // 0x20-0x2E - Access Profiles
-    for(uint8_t i = 0; i < D7A_FILE_ACCESS_PROFILE_COUNT; i++)
+    for( uint32_t i=0 ; i<length ; i++ )
     {
-        dae_access_profile_t* access_class;
+        printf(" %02X", message[i]);
+    }
+}
+#endif
 
-        // make sure we fill all 15 AP files, either with the supplied AP or by repeating the last one
-        if(i < init_args->access_profiles_count)
-          access_class = &(init_args->access_profiles[i]);
-        else
-          access_class = &(init_args->access_profiles[init_args->access_profiles_count - 1]);
+static inline bool _is_file_defined(uint8_t file_id)
+{
+    //return files[file_id].storage == FS_STORAGE_INVALID;
+    return files[file_id].length != 0;
+}
 
-        file_offsets[D7A_FILE_ACCESS_PROFILE_ID + i] = current_data_offset;
-        fs_write_access_class(i, access_class);
-        file_headers[D7A_FILE_ACCESS_PROFILE_ID + i] = (fs_file_header_t){
-            .file_properties.action_protocol_enabled = 0,
-            .file_properties.storage_class = FS_STORAGE_PERMANENT,
-            .file_permissions = 0, // TODO
-            .length = D7A_FILE_ACCESS_PROFILE_SIZE,
-            .allocated_length = D7A_FILE_ACCESS_PROFILE_SIZE
-        };
+void fs_init(fs_systemfiles_t* provisioning)
+{
+    if (is_fs_init_completed)
+        return /*0*/;
+
+    memset(files,0,sizeof(files));
+
+#ifdef MODULE_VFS
+    //mount permanent and transient storages
+    int res=0;
+    for (int i=0; i < FS_STORAGE_CLASS_NUMOF; i++) {
+        res = vfs_mount((vfs_mount_t*)d7a_fs[i]);
+        if (!(res == 0 || res==-EBUSY)) {
+#if (ALLOW_FORMAT==1)
+            DPRINT("Error: fs[%d] mount failed (%d). trying format",i,res);
+            if ((res = vfs_format((vfs_mount_t*)d7a_fs[i]))!=0)
+            {
+                DPRINT("Error: fs[%d] format failed (%d)\n",i,res);
+                /* no return. (re)try mount before failing */
+            }
+#endif
+            if ((res = vfs_mount((vfs_mount_t*)d7a_fs[i])) != 0)
+            {
+                DPRINT("D7A fs_init ERROR: fs[%d] mount failed (%d)",i,res);
+                return /*-1*/;
+            }
+        }
+        DPRINT("D7A fs[%d] mounted",i);
+    }
+#endif
+
+#ifndef MODULE_VFS
+    // initialise the blockdevice driver according platform specificities
+    // for now, only permanent and volatile storage are supported
+    bd[FS_STORAGE_PERMANENT] = PLATFORM_PERMANENT_BD;
+    bd[FS_STORAGE_VOLATILE] = PLATFORM_VOLATILE_BD;
+#endif
+
+    if (provisioning)
+        _fs_init_permanent_systemfiles(provisioning);
+
+    is_fs_init_completed = true;
+    DPRINT("fs_init OK");
+}
+
+int _fs_init_permanent_systemfiles(fs_systemfiles_t* permanent_systemfiles)
+{
+    if (_fs_verify_magic(FS_STORAGE_PERMANENT, permanent_systemfiles->magic_number) < 0)
+    {
+        DPRINT("fs_init: no valid magic, recreating fs...");
+
+#ifdef MODULE_VFS
+
+#if (FORCE_REFORMAT == 1)
+        DPRINT("init_permanent_systemfiles: force format\n");
+        int res;
+        if ((res = vfs_umount((vfs_mount_t*)d7a_fs[FS_STORAGE_PERMANENT])) != 0)
+        {
+            DPRINT("init_permanent_systemfiles: Oops, umount failed (%d)", res);
+        }
+        if ((res = vfs_format((vfs_mount_t*)d7a_fs[FS_STORAGE_PERMANENT])) != 0)
+        {
+            DPRINT("init_permanent_systemfiles: Oops, format failed (%d)", res);
+            return res;
+        }
+        if ((res = vfs_mount((vfs_mount_t*)d7a_fs[FS_STORAGE_PERMANENT]))!=0)
+        {
+            DPRINT("init_permanent_systemfiles: Oops, remount failed (%d)",res);
+            return res;
+        }
+        DPRINT("init_permanent_systemfiles: force format complete");
+#endif
+
+#endif
+
+        _fs_create_magic(FS_STORAGE_PERMANENT);
+   }
+
+#ifdef MODULE_VFS
+    for (unsigned int file_id = 0; file_id < permanent_systemfiles->nfiles; file_id++)
+    {
+        _fs_create_file(file_id, FS_STORAGE_PERMANENT, permanent_systemfiles->files_data + permanent_systemfiles->files_offset[file_id],
+                        permanent_systemfiles->files_length[file_id]);
+    }
+#else
+    // initialise system file caching
+    for (int file_id = 0; file_id < permanent_systemfiles->nfiles; file_id++)
+    {
+        files[file_id].storage = FS_STORAGE_PERMANENT;
+        files[file_id].length = permanent_systemfiles->files_length[file_id];
+        files[file_id].addr = permanent_systemfiles->files_offset[file_id];
     }
 
-    // 0x0D- Network security
-    file_offsets[D7A_FILE_NWL_SECURITY] = current_data_offset;
-    file_headers[D7A_FILE_NWL_SECURITY] = (fs_file_header_t){
-        .file_properties.action_protocol_enabled = 0,
-        .file_properties.storage_class = FS_STORAGE_PERMANENT,
-        .file_permissions = 0, // TODO
-        .length = D7A_FILE_NWL_SECURITY_SIZE,
-        .allocated_length = D7A_FILE_ACCESS_PROFILE_SIZE
-    };
-
-    memset(data + current_data_offset, 0, D7A_FILE_NWL_SECURITY_SIZE);
-    data[current_data_offset] = PROVISIONED_KEY_COUNTER;
-
-    current_data_offset += D7A_FILE_NWL_SECURITY_SIZE;
-
-    // 0x0E - Network security key
-    file_offsets[D7A_FILE_NWL_SECURITY_KEY] = current_data_offset;
-    file_headers[D7A_FILE_NWL_SECURITY_KEY] = (fs_file_header_t){
-        .file_properties.action_protocol_enabled = 0,
-        .file_properties.storage_class = FS_STORAGE_PERMANENT,
-        .file_permissions = 0, // TODO
-        .length = D7A_FILE_NWL_SECURITY_KEY_SIZE,
-        .allocated_length = D7A_FILE_NWL_SECURITY_KEY_SIZE
-    };
-
-    memcpy(data + current_data_offset, AES128_key, D7A_FILE_NWL_SECURITY_KEY_SIZE);
-    current_data_offset += D7A_FILE_NWL_SECURITY_KEY_SIZE;
-
-    // 0x0F - Network security state register
-    file_offsets[D7A_FILE_NWL_SECURITY_STATE_REG] = current_data_offset;
-    file_headers[D7A_FILE_NWL_SECURITY_STATE_REG] = (fs_file_header_t){
-        .file_properties.action_protocol_enabled = 0,
-        .file_properties.storage_class = FS_STORAGE_PERMANENT,
-        .file_permissions = 0, // TODO
-        .length = init_args->ssr_filter_mode & FS_ENABLE_SSR_FILTER ? D7A_FILE_NWL_SECURITY_STATE_REG_SIZE : 1,
-        .allocated_length = init_args->ssr_filter_mode & FS_ENABLE_SSR_FILTER ? D7A_FILE_NWL_SECURITY_STATE_REG_SIZE : 1
-    };
-
-    data[current_data_offset] = init_args->ssr_filter_mode; current_data_offset++;
-    data[current_data_offset] = 0; current_data_offset++;
-    if (init_args->ssr_filter_mode & FS_ENABLE_SSR_FILTER)
-        current_data_offset += D7A_FILE_NWL_SECURITY_STATE_REG_SIZE - 2;
-
-    // init user files
-    if(init_args->fs_user_files_init_cb)
-        init_args->fs_user_files_init_cb();
-
-    assert(current_data_offset <= FRAMEWORK_FS_FILESYSTEM_SIZE);
-    d7aactp_callback = init_args->fs_d7aactp_cb;
-    is_fs_init_completed = true;
+    permanent_data_offset = permanent_systemfiles->files_offset[permanent_systemfiles->nfiles - 1] +
+                            permanent_systemfiles->files_length[permanent_systemfiles->nfiles - 1];
+#endif
+    return 0;
 }
 
-void fs_init_file(uint8_t file_id, const fs_file_header_t* file_header, const uint8_t* initial_data)
+//TODO: CRC MAGIC
+static int _fs_create_magic(fs_storage_class_t storage_class)
 {
-    assert(file_header->allocated_length>=file_header->length); //must be set explicitly. no default.
-    assert(!is_fs_init_completed); // initing files not allowed after fs_init() completed (for now?)
+    assert(!is_fs_init_completed);
+    uint8_t magic[] = FS_MAGIC_NUMBER;
+
+#ifdef MODULE_VFS
+    char fn[MAX_FILE_NAME];
+    int rtc;
+    int fd;
+
+    snprintf(fn, MAX_FILE_NAME, "%s/d7f.magic", (d7a_fs[storage_class])->mount_point);
+
+    if ((fd = vfs_open(fn, O_CREAT | O_RDWR, 0)) < 0)
+    {
+        DPRINT("Error opening file magic for create (%s)",fn);
+        return -ENOENT;
+    }
+
+    /* write the magic */
+    rtc = vfs_write(fd, magic, FS_MAGIC_NUMBER_SIZE);
+    if ( (rtc < 0) || ((unsigned)rtc < FS_MAGIC_NUMBER_SIZE) )
+    {
+        vfs_close(fd);
+        DPRINT("Error writing file magic (%d)",rtc);
+        return rtc;
+    }
+    vfs_close(fd);
+#endif
+
+    /* verify */
+    return _fs_verify_magic(storage_class, magic);
+}
+
+
+/* The magic number allows to check filesystem integrity.*/
+static int _fs_verify_magic(fs_storage_class_t storage_class, uint8_t* expected_magic_number)
+{
+    is_fs_init_completed = false;
+
+#ifdef MODULE_VFS
+    char fn[MAX_FILE_NAME];
+    int rtc;
+    int fd;
+
+    snprintf( fn, MAX_FILE_NAME,   "%s/d7f.magic",
+            (d7a_fs[storage_class])->mount_point);
+
+    if ((fd = vfs_open(fn, O_RDONLY, 0)) < 0)
+    {
+        DPRINT("Error opening file magic for reading (%s)",fn);
+        return -ENOENT;
+    }
+
+    /* read the magic */
+    char magic[FS_MAGIC_NUMBER_SIZE];
+    memset(magic,0,FS_MAGIC_NUMBER_SIZE);
+    rtc = vfs_read(fd, magic, FS_MAGIC_NUMBER_SIZE);
+    if ( (rtc < 0) || ((unsigned)rtc < FS_MAGIC_NUMBER_SIZE) )
+    {
+        vfs_close(fd);
+        DPRINT("Error reading file magic (%d) exp:%ld",rtc, FS_MAGIC_NUMBER_SIZE);
+        return rtc;
+    }
+    vfs_close(fd);
+
+    /* compare */
+    for (int i = 0; i < (int)FS_MAGIC_NUMBER_SIZE; i++) {
+        if (magic[i] != expected_magic_number[i]) {
+            DPRINT("Error magic[%d] incorrect (%d)", i, magic[i]);
+            return -EFAULT;
+        }
+    }
+#else
+    uint8_t magic_number[FS_MAGIC_NUMBER_SIZE];
+    memset(magic_number,0,FS_MAGIC_NUMBER_SIZE);
+    blockdevice_read(bd[storage_class], magic_number, 0, FS_MAGIC_NUMBER_SIZE);
+    assert(memcmp(expected_magic_number, magic_number, FS_MAGIC_NUMBER_SIZE) == 0); // if not the FS on EEPROM is not compatible with the current code
+#endif
+
+    return 0;
+}
+
+#ifdef MODULE_VFS
+static int _create_file_name(char* file_name, uint8_t file_id, fs_storage_class_t storage_class)
+{
+    memset(file_name, 0, MAX_FILE_NAME);
+
+    if (_is_file_defined(file_id)) {
+        if (files[file_id].storage != storage_class) {
+            //FIXME: this should not happen.
+            DPRINT("Oops: somebody's trying to change the storage class.... mv m1 m2");
+            assert(false);
+        }
+    } else {
+        files[file_id].storage = storage_class;
+    }
+
+    return snprintf( file_name, MAX_FILE_NAME,   "%s/d7f.%u",
+                     (d7a_fs[files[file_id].storage])->mount_point,
+                     (unsigned)file_id );
+}
+
+static int _get_file_name(char* file_name, uint8_t file_id)
+{
+    memset(file_name, 0, MAX_FILE_NAME);
+
+    if (!_is_file_defined(file_id))
+    {
+        files[file_id].storage = FS_STORAGE_PERMANENT;
+    }
+
+    return snprintf( file_name, MAX_FILE_NAME,   "%s/d7f.%u",
+                     (d7a_fs[files[file_id].storage])->mount_point,
+                     (unsigned)file_id );
+}
+#endif
+
+int _fs_create_file(uint8_t file_id, fs_storage_class_t storage_class, const uint8_t* initial_data, uint32_t length)
+{
+    assert(file_id < FRAMEWORK_FS_FILE_COUNT);
+
+    if (_is_file_defined(file_id))
+        return -EEXIST;
+
+#ifdef MODULE_VFS
+    char fn[MAX_FILE_NAME];
+    int rtc;
+    int fd;
+    if ((rtc = _create_file_name(fn, file_id, storage_class)) <=0) {
+        DPRINT("Error creating fileid=%d name (%d)",file_id, rtc);
+        return -ENOENT;
+    }
+
+    if ((fd = vfs_open(fn, O_CREAT | O_RDWR, 0)) < 0) {
+        DPRINT("Error creating fileid=%d (%s)",file_id, fn);
+        return -ENOENT;
+    }
+
+    if(initial_data != NULL) {
+        if ( (rtc = vfs_write(fd, initial_data, length)) != length ) {
+            vfs_close(fd);
+            DPRINT("Error writing fileid=%d header (%d)",file_id, rtc);
+            return rtc;
+        }
+    }
+
+    vfs_close(fd);
+#else
+    // only user files can be created
+    assert(file_id >= 0x40);
+
+    if (storage_class == FS_STORAGE_PERMANENT)
+    {
+        files[file_id].addr = permanent_data_offset;
+        permanent_data_offset += length;
+    }
+    else
+    {
+        files[file_id].addr = volatile_data_offset;
+        volatile_data_offset += length;
+    }
+
+    if(initial_data != NULL) {
+        blockdevice_program(bd[storage_class], initial_data, files[file_id].addr, length);
+    }
+    else{
+        uint8_t default_data[length];
+        memset(default_data, 0xff, length);
+        blockdevice_program(bd[storage_class], default_data, files[file_id].addr, length);
+    }
+#endif
+
+    // update file caching for stat lookup
+    files[file_id].storage = storage_class;
+    files[file_id].length = length;
+    DPRINT("fs init file(file_id %d, storage %d, addr %p, length %d)",file_id, storage_class, files[file_id].addr, length);
+    return 0;
+}
+
+int fs_init_file(uint8_t file_id, fs_storage_class_t storage_class, const uint8_t* initial_data, uint32_t length)
+{
+    assert(is_fs_init_completed);
     assert(file_id < FRAMEWORK_FS_FILE_COUNT);
     assert(file_id >= 0x40); // system files may not be inited
-    assert(current_data_offset + file_header->allocated_length <= FRAMEWORK_FS_FILESYSTEM_SIZE);
+    assert(storage_class == FS_STORAGE_VOLATILE || storage_class == FS_STORAGE_PERMANENT); // other options not implemented
 
-    file_offsets[file_id] = current_data_offset;
-    memcpy(file_headers + file_id, file_header, sizeof(fs_file_header_t));
-    memset(data + current_data_offset, 0, file_header->allocated_length);
-    current_data_offset += file_header->allocated_length;
-    if(initial_data != NULL)
-        fs_write_file(file_id, 0, initial_data, file_header->length);
+    return (_fs_create_file(file_id, storage_class, initial_data, length));
 }
 
-void fs_init_file_with_d7asp_interface_config(uint8_t file_id, const d7ap_session_config_t* fifo_config)
+int fs_read_file(uint8_t file_id, uint32_t offset, uint8_t* buffer, uint32_t length)
 {
-    // TODO check file not already defined
+    if(!_is_file_defined(file_id)) return -ENOENT;
 
-    uint8_t alp_command_buffer[40] = { 0 };
-    uint8_t* ptr = alp_command_buffer;
-    (*ptr) = ALP_ITF_ID_D7ASP; ptr++;
-    (*ptr) = fifo_config->qos.raw; ptr++;
-    (*ptr) = fifo_config->dormant_timeout; ptr++;
-    (*ptr) = fifo_config->addressee.ctrl.raw; ptr++;
-    (*ptr) = fifo_config->addressee.access_class; ptr++;
-    memcpy(ptr, &(fifo_config->addressee.id), 8); ptr += 8; // TODO assume 8 for now
+    if(files[file_id].length < offset + length) return -EINVAL;
 
-    uint32_t len = ptr - alp_command_buffer;
-    // TODO fixed header implemented here, or should this be configurable by app?
-    fs_file_header_t file_header = (fs_file_header_t){
-        .file_properties.action_protocol_enabled = 0,
-        .file_properties.storage_class = FS_STORAGE_PERMANENT,
-        .file_permissions = 0, // TODO
-        .length = len,
-        .allocated_length = len,
-    };
+#ifdef MODULE_VFS
+    char fn[MAX_FILE_NAME];
+    int rtc;
+    int fd;
 
-    fs_init_file(file_id, &file_header, alp_command_buffer);
-}
-
-void fs_init_file_with_D7AActP(uint8_t file_id, const d7ap_session_config_t* fifo_config, const uint8_t* alp_command, const uint8_t alp_command_len)
-{
-    uint8_t alp_command_buffer[40] = { 0 };
-    uint8_t* ptr = alp_command_buffer;
-    (*ptr) = ALP_ITF_ID_D7ASP; ptr++;
-    (*ptr) = fifo_config->qos.raw; ptr++;
-    (*ptr) = fifo_config->dormant_timeout; ptr++;
-    (*ptr) = fifo_config->addressee.ctrl.raw; ptr++;
-    (*ptr) = fifo_config->addressee.access_class; ptr++;
-    memcpy(ptr, &(fifo_config->addressee.id), 8); ptr += 8; // TODO assume 8 for now
-
-    memcpy(ptr, alp_command, alp_command_len); ptr += alp_command_len;
-
-    uint32_t len = ptr - alp_command_buffer;
-    // TODO fixed header implemented here, or should this be configurable by app?
-    fs_file_header_t action_file_header = (fs_file_header_t){
-        .file_properties.action_protocol_enabled = 0,
-        .file_properties.storage_class = FS_STORAGE_PERMANENT,
-        .file_permissions = 0, // TODO
-        .length = len,
-        .allocated_length = len,
-    };
-
-    fs_init_file(file_id, &action_file_header, alp_command_buffer);
-}
-
-alp_status_codes_t fs_read_file(uint8_t file_id, uint8_t offset, uint8_t* buffer, uint8_t length)
-{
-    if(!is_file_defined(file_id)) return ALP_STATUS_FILE_ID_NOT_EXISTS;
-    if(file_headers[file_id].length < offset + length) return ALP_STATUS_UNKNOWN_ERROR; // TODO more specific error (wait for spec discussion)
-
-    memcpy(buffer, data + file_offsets[file_id] + offset, length);
-    return ALP_STATUS_OK;
-}
-
-alp_status_codes_t fs_read_file_header(uint8_t file_id, fs_file_header_t* file_header)
-{
-  if(!is_file_defined(file_id)) return ALP_STATUS_FILE_ID_NOT_EXISTS;
-
-  memcpy(file_header, &file_headers[file_id], sizeof(fs_file_header_t));
-  return ALP_STATUS_OK;
-}
-
-alp_status_codes_t fs_write_file_header(uint8_t file_id, fs_file_header_t* file_header)
-{
-  if(!is_file_defined(file_id)) return ALP_STATUS_FILE_ID_NOT_EXISTS;
-
-  memcpy(&file_headers[file_id], file_header, sizeof(fs_file_header_t));
-  return ALP_STATUS_OK;
-}
-
-alp_status_codes_t fs_write_file(uint8_t file_id, uint8_t offset, const uint8_t* buffer, uint8_t length)
-{
-    /* O_TRUNC like: shrink allowed, append nok, length>allocated_length nok.*/ 
-    if(!is_file_defined(file_id)) return ALP_STATUS_FILE_ID_NOT_EXISTS;
-    if(file_headers[file_id].allocated_length < offset + length) return ALP_STATUS_UNKNOWN_ERROR; // TODO more specific error (wait for spec discussion)
-
-    memcpy(data + file_offsets[file_id] + offset, buffer, length);
-    file_headers[file_id].length=length;
-
-    if(file_headers[file_id].file_properties.action_protocol_enabled == true
-            && file_headers[file_id].file_properties.action_condition == ALP_ACT_COND_WRITE) // TODO ALP_ACT_COND_WRITEFLUSH?
+    if ((rtc = _get_file_name(fn, file_id)) <= 0)
     {
-        execute_d7a_action_protocol(file_headers[file_id].alp_cmd_file_id, file_headers[file_id].interface_file_id);
+        DPRINT("Error creating fileid=%d name (%d)",file_id, rtc);
+        return rtc;
     }
 
+    if ((fd = vfs_open(fn, O_RDONLY, 0)) < 0)
+    {
+        DPRINT("Error opening fileid=%d for reading (%s)",file_id, fn);
+        return -ENOENT;
+    }
+
+    if (buffer && length)
+    {
+        if (offset)
+        {
+            rtc = vfs_lseek(fd, offset, SEEK_SET);
+            if ((rtc < 0) || ((unsigned)rtc < offset))
+            {
+                vfs_close(fd);
+                DPRINT("Error seeking fileid=%d header (%d)",file_id, rtc);
+                return rtc;
+            }
+        }
+
+        memset(buffer,0,length);
+        if ((rtc = vfs_read(fd, buffer, length)) < 0)
+        {
+            vfs_close(fd);
+            DPRINT("Error reading fileid=%d (%d) data[%d]",file_id, rtc, length);
+            return rtc;
+        }
+    }
+
+    vfs_close(fd);
+#else
+    fs_storage_class_t storage = files[file_id].storage;
+    blockdevice_read(bd[storage], buffer, files[file_id].addr + offset, length);
+#endif
+
+    DPRINT("fs read_file(file_id %d, offset %d, addr %p, length %d)",file_id, offset, files[file_id].addr, length);
+    return 0;
+}
+
+int fs_write_file(uint8_t file_id, uint32_t offset, const uint8_t* buffer, uint32_t length)
+{
+    if(!_is_file_defined(file_id)) return -ENOENT;
+
+#ifdef MODULE_VFS
+    char fn[MAX_FILE_NAME];
+    int rtc;
+    int fd;
+    if ((rtc = _get_file_name(fn, file_id)) <= 0)
+    {
+        DPRINT("Error creating fileid=%d name (%d)\n",file_id, rtc);
+        return -ENOENT;
+    }
+
+    if ((fd = vfs_open(fn, O_RDWR, 0)) < 0)
+    {
+        DPRINT("Error opening fileid=%d rdwr (%s)\n",file_id, fn);
+        return -ENOENT;
+    }
+
+    if (buffer && length)
+    {
+        rtc = vfs_lseek(fd, offset, SEEK_SET);
+        if ((rtc < 0) || ((unsigned)rtc < offset))
+        {
+            vfs_close(fd);
+            DPRINT("Error seeking fileid=%d return (%d)\n",file_id, rtc);
+            return rtc;
+        }
+        rtc = vfs_write(fd, buffer, length);
+        if ((rtc < 0) || ((unsigned)rtc < length))
+        {
+            vfs_close(fd);
+            DPRINT("Error writing fileid=%d (%d) data[%d]\n",file_id, rtc,length);
+            return rtc;
+        }
+    }
+
+    vfs_close(fd);
+#else
+    if(files[file_id].length < offset + length) return -ENOBUFS;
+
+    fs_storage_class_t storage = files[file_id].storage;
+    blockdevice_program(bd[storage], buffer, files[file_id].addr + offset, length);
+#endif
+
+    DPRINT("fs write_file (file_id %d, offset %d, addr %p, length %d)",
+           file_id, offset, files[file_id].addr, length);
 
     if(file_modified_callbacks[file_id])
-      file_modified_callbacks[file_id](file_id);
+         file_modified_callbacks[file_id](file_id);
 
-    return ALP_STATUS_OK;
+    return 0;
 }
 
-void fs_read_uid(uint8_t *buffer)
+fs_file_stat_t *fs_file_stat(uint8_t file_id)
 {
-    fs_read_file(D7A_FILE_UID_FILE_ID, 0, buffer, D7A_FILE_UID_SIZE);
-}
+    assert(is_fs_init_completed);
 
-void fs_read_vid(uint8_t *buffer)
-{
-    fs_read_file(D7A_FILE_DLL_CONF_FILE_ID, 1, buffer, 2);
-}
+    assert(file_id < FRAMEWORK_FS_FILE_COUNT);
 
-void fs_write_vid(uint8_t* buffer)
-{
-    fs_write_file(D7A_FILE_DLL_CONF_FILE_ID, 1, buffer, 2);
-}
-
-void fs_read_access_class(uint8_t access_class_index, dae_access_profile_t *access_class)
-{
-    assert(access_class_index < 15);
-    assert(is_file_defined(D7A_FILE_ACCESS_PROFILE_ID + access_class_index));
-    uint8_t* data_ptr = data + file_offsets[D7A_FILE_ACCESS_PROFILE_ID + access_class_index];
-    memcpy(&(access_class->channel_header), data_ptr, 1); data_ptr++;
-
-    for(uint8_t i = 0; i < SUBPROFILES_NB; i++)
-    {
-        memcpy(&(access_class->subprofiles[i].subband_bitmap), data_ptr, 1); data_ptr++;
-        memcpy(&(access_class->subprofiles[i].scan_automation_period), data_ptr, 1); data_ptr++;
-    }
-
-    for(uint8_t i = 0; i < SUBBANDS_NB; i++)
-    {
-        memcpy(&(access_class->subbands[i].channel_index_start), data_ptr, 2); data_ptr += 2;
-        memcpy(&(access_class->subbands[i].channel_index_end), data_ptr, 2); data_ptr += 2;
-        memcpy(&(access_class->subbands[i].eirp), data_ptr, 1); data_ptr++;
-        memcpy(&(access_class->subbands[i].cca), data_ptr, 1); data_ptr++;
-        memcpy(&(access_class->subbands[i].duty), data_ptr, 1); data_ptr++;
-    }
-}
-
-void fs_write_access_class(uint8_t access_class_index, dae_access_profile_t* access_class)
-{
-    assert(access_class_index < 15);
-    current_data_offset = file_offsets[D7A_FILE_ACCESS_PROFILE_ID + access_class_index];
-    memcpy(data + current_data_offset, &(access_class->channel_header), 1); current_data_offset++;
-
-    for(uint8_t i = 0; i < SUBPROFILES_NB; i++)
-    {
-        memcpy(data + current_data_offset, &(access_class->subprofiles[i].subband_bitmap), 1); current_data_offset++;
-        memcpy(data + current_data_offset, &(access_class->subprofiles[i].scan_automation_period), 1); current_data_offset++;
-    }
-
-    for(uint8_t i = 0; i < SUBBANDS_NB; i++)
-    {
-        memcpy(data + current_data_offset, &(access_class->subbands[i].channel_index_start), 2); current_data_offset += 2;
-        memcpy(data + current_data_offset, &(access_class->subbands[i].channel_index_end), 2); current_data_offset += 2;
-        data[current_data_offset] = access_class->subbands[i].eirp; current_data_offset++;
-        data[current_data_offset] = access_class->subbands[i].cca; current_data_offset++;
-        data[current_data_offset] = access_class->subbands[i].duty; current_data_offset++;
-    }
-}
-
-uint8_t fs_read_dll_conf_active_access_class(void)
-{
-    uint8_t access_class;
-    fs_read_file(D7A_FILE_DLL_CONF_FILE_ID, 0, &access_class, 1);
-    return access_class;
-}
-
-void fs_write_dll_conf_active_access_class(uint8_t access_class)
-{
-    fs_write_file(D7A_FILE_DLL_CONF_FILE_ID, 0, &access_class, 1);
-}
-
-uint8_t fs_get_file_length(uint8_t file_id)
-{
-  assert(is_file_defined(file_id));
-  return file_headers[file_id].length;
+    if (_is_file_defined(file_id))
+        return (fs_file_stat_t*)&files[file_id];
+    else
+        return NULL;
 }
 
 bool fs_register_file_modified_callback(uint8_t file_id, fs_modified_file_callback_t callback)
 {
-  if(file_modified_callbacks[file_id])
-    return false; // already registered
+    assert(_is_file_defined(file_id));
 
-  file_modified_callbacks[file_id] = callback;
-  return true;
+    if(file_modified_callbacks[file_id])
+        return false; // already registered
+
+    file_modified_callbacks[file_id] = callback;
+    return true;
 }
 
-#endif /*MODULE_VFS*/

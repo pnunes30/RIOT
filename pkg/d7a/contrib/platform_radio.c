@@ -58,15 +58,15 @@ static void log_print_data(uint8_t* message, uint32_t length)
 }
 #endif
 
-hw_state_t hw_radio_get_opmode(void)
+hw_radio_state_t hw_radio_get_opmode(void)
 {
-    hw_state_t opmode;
+    hw_radio_state_t opmode;
 
     netdev->driver->get(netdev, NETOPT_STATE, &opmode, sizeof(netopt_state_t));
     return opmode;
 }
 
-void hw_radio_set_opmode(hw_state_t opmode) {
+void hw_radio_set_opmode(hw_radio_state_t opmode) {
     netdev->driver->set(netdev, NETOPT_STATE, &opmode, sizeof(netopt_state_t));
 }
 
