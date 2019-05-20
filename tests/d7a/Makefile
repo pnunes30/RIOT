@@ -74,7 +74,7 @@ RIOT_D7A_MTD ?= dummy
 
 ifneq (memarray,$(filter memarray, $(RIOT_D7A_FS)))
 USEMODULE += vfs
-CFLAGS += -DVFS_FILE_BUFFER_SIZE=52 -DVFS_DIR_BUFFER_SIZE=44
+CFLAGS += -DVFS_FILE_BUFFER_SIZE=56 -DVFS_DIR_BUFFER_SIZE=44
 USEMODULE += tmpfs
 ifneq (,$(filter littlefs, $(RIOT_D7A_FS)))
 USEMODULE += mtd
