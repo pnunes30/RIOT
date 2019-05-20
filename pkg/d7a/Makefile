@@ -1,5 +1,5 @@
 PKG_NAME=d7a
-PKG_URL=https://github.com/MOSAIC-LoPoW/dash7-ap-open-source-stack.git
+PKG_URL=git@gitlab.cortus.com:CIoT_SDK/dash7-ap-open-source-stack.git
 #PKG_VERSION=
 PKG_BUILDDIR ?= $(BINDIRBASE)/pkg/$(BOARD)/$(PKG_NAME)
 PKG_DIR?=$(CURDIR)
@@ -65,7 +65,7 @@ git-download:
 	echo !stack/framework/CMakeLists.txt >> $(PKG_BUILDDIR)/.git/info/sparse-checkout
 	echo !stack/framework/components >> $(PKG_BUILDDIR)/.git/info/sparse-checkout
 	echo !stack/framework/framework_bootstrap.c >> $(PKG_BUILDDIR)/.git/info/sparse-checkout
-	git -C $(PKG_BUILDDIR) pull origin new_phy
+	git -C $(PKG_BUILDDIR) pull origin master
 	git -C $(PKG_BUILDDIR) am $(GITAMFLAGS) "$(PKG_DIR)"/patches/*.patch
 	touch $@
 
