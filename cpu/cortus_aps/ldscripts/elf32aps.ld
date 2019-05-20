@@ -53,7 +53,7 @@ MEMORY
   /* Normally the first 32 bytes are unused (to avoid NULL pointer accesses
      wrecking everything), then there are 72 bytes for the debugger to save/restore
      its registers */
-  data_memory    (!rx):  org = 0x00000000, len = 64K
+  data_memory    (!rx):  org = 0x00000000, len = 128K
 };
 
 OUTPUT_FORMAT("aps")
