@@ -1,7 +1,7 @@
-From 86b373268244a627a8ee4484364a9ce7f1267da8 Mon Sep 17 00:00:00 2001
+From d5defeebd98342b00e24387c5b3c90fdf2ffc442 Mon Sep 17 00:00:00 2001
 From: Philippe Nunes <philippe.nunes@cortus.com>
 Date: Fri, 3 Aug 2018 10:37:40 +0200
-Subject: [PATCH 2/3] Build only the D7A module
+Subject: [PATCH 2/4] Build only the D7A module
 
 ---
  stack/CMakeLists.txt | 22 ++++------------------

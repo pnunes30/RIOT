@@ -1,0 +1,44 @@
+From 4048edfdc78dc73cb82c8d228697c883afb77af8 Mon Sep 17 00:00:00 2001
+From: Philippe Nunes <philippe.nunes@cortus.com>
+Date: Mon, 20 May 2019 14:34:21 +0200
+Subject: [PATCH 4/4] Disable by default the engineering mode support
+
+---
+ stack/modules/d7ap/CMakeLists.txt     | 2 +-
+ stack/modules/d7ap/engineering_mode.c | 3 +++
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/stack/modules/d7ap/CMakeLists.txt b/stack/modules/d7ap/CMakeLists.txt
+index 249c624..6d11221 100644
+--- a/stack/modules/d7ap/CMakeLists.txt
++++ b/stack/modules/d7ap/CMakeLists.txt
+@@ -66,7 +66,7 @@ MODULE_HEADER_DEFINE(BOOL ${MODULE_PREFIX}_PACKET_LOG_ENABLED)
+ MODULE_OPTION(${MODULE_PREFIX}_USE_DEFAULT_SYSTEMFILES "Use the default D7AP systemfiles values" TRUE)
+ MODULE_HEADER_DEFINE(BOOL ${MODULE_PREFIX}_USE_DEFAULT_SYSTEMFILES)
+ 
+-MODULE_OPTION(${MODULE_PREFIX}_EM_ENABLED "Enable engineering mode" TRUE)
++MODULE_OPTION(${MODULE_PREFIX}_EM_ENABLED "Enable engineering mode" FALSE)
+ MODULE_HEADER_DEFINE(BOOL ${MODULE_PREFIX}_EM_ENABLED)
+ 
+ MODULE_OPTION(${MODULE_PREFIX}_EM_LOG_ENABLED "Enable logging for the engineering mode" FALSE)
+diff --git a/stack/modules/d7ap/engineering_mode.c b/stack/modules/d7ap/engineering_mode.c
+index 2e24509..2799957 100644
+--- a/stack/modules/d7ap/engineering_mode.c
++++ b/stack/modules/d7ap/engineering_mode.c
+@@ -15,6 +15,7 @@
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
++#ifdef MODULE_D7AP_EM_ENABLED
+ 
+ #include "engineering_mode.h"
+ #include "MODULE_D7AP_defs.h"
+@@ -260,3 +261,5 @@ error_t engineering_mode_init()
+   sched_register_task(&transmit_per_packet);
+   sched_register_task(&start_per_rx);
+ }
++
++#endif
+-- 
+2.7.4
+
