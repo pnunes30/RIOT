@@ -72,6 +72,8 @@ CFLAGS += -Wno-missing-braces
 RIOT_D7A_FS ?= memarray
 RIOT_D7A_MTD ?= dummy
 
+USEMODULE += mtd
+
 ifneq (memarray,$(filter memarray, $(RIOT_D7A_FS)))
 USEMODULE += vfs
 CFLAGS += -DVFS_FILE_BUFFER_SIZE=56 -DVFS_DIR_BUFFER_SIZE=44

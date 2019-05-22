@@ -128,7 +128,7 @@ extern "C" {
 #define PAGE_PER_SECTOR 8
 #endif
 #ifndef PAGE_SIZE
-#define PAGE_SIZE 64
+#define PAGE_SIZE 128
 #endif
 /** @} */
 
@@ -136,9 +136,11 @@ extern "C" {
 
 /** mtd flash emulation device */
 extern mtd_dev_t * const mtd0;
+extern mtd_dev_t * const mtd1;
 
 /** Default MTD device */
 #define MTD_0 mtd0
+#define MTD_1 mtd1
 
 #endif
 
@@ -161,6 +163,16 @@ extern vfs_mount_t aps_mtd0_mount;
 #define ARCH_VFS_STORAGE_VOLATILE     aps_tmpfs_mount
 #define ARCH_VFS_STORAGE_RESTORABLE   aps_mtd0_mount
 #define ARCH_VFS_STORAGE_PERMANENT    aps_mtd0_mount
+#else
+/*
+extern blockdevice_t * const permanent_blockdevice;
+extern blockdevice_t * const volatile_blockdevice;
+*/
+/** Platform BD drivers*/
+/*
+#define PLATFORM_PERMANENT_BD permanent_blockdevice
+#define PLATFORM_VOLATILE_BD volatile_blockdevice
+*/
 #endif /*MODULE_VFS*/
 #endif /*MODULE_D7A*/
 /** @} */

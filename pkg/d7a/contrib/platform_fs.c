@@ -20,10 +20,8 @@
 #include "framework/inc/fs.h"
 #include "framework/inc/errors.h"
 
-
-#include "vfs.h"
 #include "board.h"
-#include <fcntl.h>
+#include "mtd.h"
 
 #define ENABLE_DEBUG (1)
 #include "debug.h"
@@ -99,7 +97,7 @@ static const vfs_mount_t* const d7a_fs[] = {
 static uint32_t volatile_data_offset = 0;
 static uint32_t permanent_data_offset = 0;
 
-static blockdevice_t* bd[FS_STORAGE_CLASS_NUMOF];
+static mtd_dev_t* mtd[FS_STORAGE_CLASS_NUMOF];
 
 #endif
 
@@ -165,8 +163,8 @@ void fs_init(fs_systemfiles_t* provisioning)
 #ifndef MODULE_VFS
     // initialise the blockdevice driver according platform specificities
     // for now, only permanent and volatile storage are supported
-    bd[FS_STORAGE_PERMANENT] = PLATFORM_PERMANENT_BD;
-    bd[FS_STORAGE_VOLATILE] = PLATFORM_VOLATILE_BD;
+    mtd[FS_STORAGE_PERMANENT] = MTD_0;
+    mtd[FS_STORAGE_VOLATILE] = MTD_1;
 #endif
 
     if (provisioning)
@@ -209,13 +207,12 @@ int _fs_init_permanent_systemfiles(fs_systemfiles_t* permanent_systemfiles)
         _fs_create_magic(FS_STORAGE_PERMANENT);
    }
 
-#ifdef MODULE_VFS
     for (unsigned int file_id = 0; file_id < permanent_systemfiles->nfiles; file_id++)
     {
         _fs_create_file(file_id, FS_STORAGE_PERMANENT, permanent_systemfiles->files_data + permanent_systemfiles->files_offset[file_id],
                         permanent_systemfiles->files_length[file_id]);
     }
-#else
+
     // initialise system file caching
     for (int file_id = 0; file_id < permanent_systemfiles->nfiles; file_id++)
     {
@@ -224,9 +221,11 @@ int _fs_init_permanent_systemfiles(fs_systemfiles_t* permanent_systemfiles)
         files[file_id].addr = permanent_systemfiles->files_offset[file_id];
     }
 
+#ifndef MODULE_VFS
     permanent_data_offset = permanent_systemfiles->files_offset[permanent_systemfiles->nfiles - 1] +
                             permanent_systemfiles->files_length[permanent_systemfiles->nfiles - 1];
 #endif
+
     return 0;
 }
 
@@ -258,6 +257,12 @@ static int _fs_create_magic(fs_storage_class_t storage_class)
         return rtc;
     }
     vfs_close(fd);
+#else
+    mtd[storage_class]->driver->write(mtd[storage_class], magic, 0, FS_MAGIC_NUMBER_SIZE);
+    if (storage_class == FS_STORAGE_PERMANENT)
+    	permanent_data_offset += FS_MAGIC_NUMBER_SIZE;
+    else
+        volatile_data_offset += FS_MAGIC_NUMBER_SIZE;
 #endif
 
     /* verify */
@@ -291,7 +296,7 @@ static int _fs_verify_magic(fs_storage_class_t storage_class, uint8_t* expected_
     if ( (rtc < 0) || ((unsigned)rtc < FS_MAGIC_NUMBER_SIZE) )
     {
         vfs_close(fd);
-        DPRINT("Error reading file magic (%d) exp:%ld",rtc, FS_MAGIC_NUMBER_SIZE);
+        DPRINT("Error reading file magic (%d) exp:%d",rtc, FS_MAGIC_NUMBER_SIZE);
         return rtc;
     }
     vfs_close(fd);
@@ -306,8 +311,9 @@ static int _fs_verify_magic(fs_storage_class_t storage_class, uint8_t* expected_
 #else
     uint8_t magic_number[FS_MAGIC_NUMBER_SIZE];
     memset(magic_number,0,FS_MAGIC_NUMBER_SIZE);
-    blockdevice_read(bd[storage_class], magic_number, 0, FS_MAGIC_NUMBER_SIZE);
-    assert(memcmp(expected_magic_number, magic_number, FS_MAGIC_NUMBER_SIZE) == 0); // if not the FS on EEPROM is not compatible with the current code
+    mtd[storage_class]->driver->read(mtd[storage_class], magic_number, 0, FS_MAGIC_NUMBER_SIZE);
+    //assert(memcmp(expected_magic_number, magic_number, FS_MAGIC_NUMBER_SIZE) == 0); // if not the FS on EEPROM is not compatible with the current code
+    return -EFAULT;
 #endif
 
     return 0;
@@ -380,7 +386,7 @@ int _fs_create_file(uint8_t file_id, fs_storage_class_t storage_class, const uin
     vfs_close(fd);
 #else
     // only user files can be created
-    assert(file_id >= 0x40);
+    //assert(file_id >= 0x40);
 
     if (storage_class == FS_STORAGE_PERMANENT)
     {
@@ -394,19 +400,19 @@ int _fs_create_file(uint8_t file_id, fs_storage_class_t storage_class, const uin
     }
 
     if(initial_data != NULL) {
-        blockdevice_program(bd[storage_class], initial_data, files[file_id].addr, length);
+        mtd[storage_class]->driver->write(mtd[storage_class], initial_data, files[file_id].addr, length);
     }
     else{
         uint8_t default_data[length];
         memset(default_data, 0xff, length);
-        blockdevice_program(bd[storage_class], default_data, files[file_id].addr, length);
+        mtd[storage_class]->driver->write(mtd[storage_class], default_data, files[file_id].addr, length);
     }
 #endif
 
     // update file caching for stat lookup
     files[file_id].storage = storage_class;
     files[file_id].length = length;
-    DPRINT("fs init file(file_id %d, storage %d, addr %p, length %d)",file_id, storage_class, files[file_id].addr, length);
+    DPRINT("fs init file(file_id %d, storage %d, addr %p, length %u)",file_id, storage_class, files[file_id].addr, length);
     return 0;
 }
 
@@ -468,10 +474,10 @@ int fs_read_file(uint8_t file_id, uint32_t offset, uint8_t* buffer, uint32_t len
     vfs_close(fd);
 #else
     fs_storage_class_t storage = files[file_id].storage;
-    blockdevice_read(bd[storage], buffer, files[file_id].addr + offset, length);
+    mtd[storage]->driver->read(mtd[storage], buffer, files[file_id].addr + offset, length);
 #endif
 
-    DPRINT("fs read_file(file_id %d, offset %d, addr %p, length %d)",file_id, offset, files[file_id].addr, length);
+    DPRINT("fs read_file(file_id %d, offset %d, addr %p, length %u)",file_id, offset, files[file_id].addr, length);
     return 0;
 }
 
@@ -508,7 +514,7 @@ int fs_write_file(uint8_t file_id, uint32_t offset, const uint8_t* buffer, uint3
         if ((rtc < 0) || ((unsigned)rtc < length))
         {
             vfs_close(fd);
-            DPRINT("Error writing fileid=%d (%d) data[%d]\n",file_id, rtc,length);
+            DPRINT("Error writing fileid=%d (%d) data[%u]\n",file_id, rtc,length);
             return rtc;
         }
     }
@@ -518,7 +524,7 @@ int fs_write_file(uint8_t file_id, uint32_t offset, const uint8_t* buffer, uint3
     if(files[file_id].length < offset + length) return -ENOBUFS;
 
     fs_storage_class_t storage = files[file_id].storage;
-    blockdevice_program(bd[storage], buffer, files[file_id].addr + offset, length);
+    mtd[storage]->driver->write(mtd[storage], buffer, files[file_id].addr + offset, length);
 #endif
 
     DPRINT("fs write_file (file_id %d, offset %d, addr %p, length %d)",
