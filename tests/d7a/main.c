@@ -26,12 +26,17 @@
 #include "net/gnrc.h"
 
 #include "d7ap.h"
+#include "d7ap_fs.h"
 
 #define ENABLE_DEBUG (1)
 #include "debug.h"
 
 /* set interval to 5 second */
 #define INTERVAL (5U * US_PER_SEC)
+
+#define SENSOR_FILE_ID           0x40
+#define SENSOR_FILE_SIZE         4
+
 
 /* Address Id is at most 8 bytes long (e.g. 16 hex chars) */
 static char addr_hex_string[ID_TYPE_UID_ID_LENGTH * 2 + 1];
@@ -204,6 +209,8 @@ void sensor_measurement(void *arg)
 
     printf("DHT values - temp: %s°C - relative humidity: %s%%\n",
             temp_s, hum_s);
+
+    d7ap_fs_write_file(SENSOR_FILE_ID, 0, (uint8_t*)&temp, sizeof(temp));
 
     if (send_dht_temp)
     {
@@ -595,6 +602,19 @@ int main(void)
         return 1;
     }
 #endif
+
+    // finally, register the sensor file, configured to use D7AActP
+    d7ap_fs_file_header_t file_header = (d7ap_fs_file_header_t){
+      .file_properties.action_protocol_enabled = 0,
+      .file_properties.storage_class = FS_STORAGE_VOLATILE,
+      .file_permissions = 0, // TODO
+      .action_file_id = 0,
+      .interface_file_id = 0,
+      .length = SENSOR_FILE_SIZE,
+      .allocated_length = SENSOR_FILE_SIZE
+    };
+
+    d7ap_fs_init_file(SENSOR_FILE_ID, &file_header, NULL);
 
     /* start the shell */
     printf("Starting the shell now\r\n");
