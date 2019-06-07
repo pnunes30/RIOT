@@ -33,8 +33,8 @@ ifneq (,$(filter mini,$(RIOT_CLIB)))
 else
   ifneq (,$(filter vfs,$(USEMODULE)))
 #FIXME: aps newlib multiple definitions errors
-  	USEMODULE += newlib
-  	USEMODULE += newlib_syscalls_default
+#  	USEMODULE += newlib
+#  	USEMODULE += newlib_syscalls_default
   endif
 endif
 
