@@ -87,7 +87,7 @@ extern unsigned _vfs_mounttab_start[], _vfs_mounttab_end[];
  * @{
  */
 #define TMPFS_MAX_FILES     (40)
-#define TMPFS_BUF_SIZE      (8)
+#define TMPFS_BUF_SIZE      (128)
 #define TMPFS_MAX_BUF       (64)
 #endif
 
