@@ -19,6 +19,7 @@
  */
 
 #include <limits.h>
+#include <string.h>
 
 #include "log.h"
 #include "random.h"
