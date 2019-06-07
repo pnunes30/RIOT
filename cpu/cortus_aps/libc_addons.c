@@ -64,7 +64,7 @@ int snprintf(char * buf, size_t sz, const char* fmt, ...)
 //#warning "FIXME: unsafe snprintf workaround and unreliable sprintf(va_list)..."
 	va_list argptr;
 	va_start(argptr, fmt);
-	int rtc = sprintf(buf, fmt, argptr);	 //unsafe //fmt not a string literal warning
+	int rtc = vsprintf(buf, fmt, argptr);	 //unsafe //fmt not a string literal warning
 	va_end(argptr);
 	assert( strlen(buf) < sz);   //crash afterwards if buffer overflow...
 	return rtc;
