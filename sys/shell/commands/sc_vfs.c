@@ -236,7 +236,8 @@ static int _cat_handler(int argc, char **argv)
     }
     char c;
     while (read(fd, &c, 1) != 0) {
-        putchar(c);
+        printf("%02X", c);
+    	//putchar(c);
     }
     close(fd);
 #endif
