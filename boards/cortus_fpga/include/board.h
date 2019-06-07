@@ -122,7 +122,7 @@ extern "C" {
 /* Test mock object implementing a simple RAM-based mtd */
 
 #ifndef SECTOR_COUNT
-#define SECTOR_COUNT 32
+#define SECTOR_COUNT 64
 #endif
 #ifndef PAGE_PER_SECTOR
 #define PAGE_PER_SECTOR 8
