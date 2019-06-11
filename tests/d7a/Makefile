@@ -32,20 +32,19 @@ USEMODULE += shell
 USEMODULE += shell_commands
 USEMODULE += ps
 
-USEMODULE += dht
+#USEMODULE += dht
 USEMODULE += fmt
 
 # Use modules for networking
 # gnrc is a meta module including all required, basic gnrc networking modules
-USEMODULE += gnrc
+#USEMODULE += gnrc
 # use the default network interface for the board
 #USEMODULE += gnrc_netdev_default
 # automatically initialize the network interface
 USEMODULE += auto_init_gnrc_netif
 
 # the application dumps received packets to stdout
-USEMODULE += gnrc_pktdump
-
+#USEMODULE += gnrc_pktdump
 #USEMODULE += ipv6_addr
 
 #required for C++ compiling
@@ -79,10 +78,8 @@ USEMODULE += vfs
 CFLAGS += -DVFS_FILE_BUFFER_SIZE=56 -DVFS_DIR_BUFFER_SIZE=44
 USEMODULE += tmpfs
 ifneq (,$(filter littlefs, $(RIOT_D7A_FS)))
-USEMODULE += mtd
 USEMODULE += littlefs
 else ifneq (,$(filter spiffs, $(RIOT_D7A_FS)))
-USEMODULE += mtd
 USEMODULE += spiffs
 endif
 ifneq (,$(filter m25p32, $(RIOT_D7A_MTD)))

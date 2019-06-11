@@ -20,10 +20,15 @@
 #include "fmt.h"
 #include "xtimer.h"
 
+#if defined(MODULE_DHT)
 #include "dht.h"
 #include "dht_params.h"
+#endif
+
+#if defined(MODULE_GNRC)
 #include "net/gnrc/pktdump.h"
 #include "net/gnrc.h"
+#endif
 
 #include "d7ap.h"
 #include "d7ap_fs.h"
@@ -63,10 +68,11 @@ d7ap_session_config_t session_config = {
 
 static  uint32_t timeout = INTERVAL;
 
-#if defined(MODULE_DHT)
 xtimer_t dht_timer;
 bool send_dht_temp = true;
 bool send_dht_hum = false;
+
+#if defined(MODULE_DHT)
 dht_t dht_dev;
 #endif
 
@@ -197,10 +203,15 @@ void sensor_measurement(void *arg)
     (void)arg;
     puts("DHT temperature and humidity sensor reading");
 
+#ifdef MODULE_DHT
     if (dht_read(&dht_dev, &temp, &hum) != DHT_OK) {
         puts("Error reading values");
         goto repeat;
     }
+#else
+    temp = 245;
+    hum = 499;
+#endif
 
     size_t n = fmt_s16_dfp(temp_s, temp, -1);
     temp_s[n] = '\0';
@@ -566,9 +577,11 @@ int main(void)
     client_id = d7ap_register(&desc);
 
     // dump the packet
+#ifdef MODULE_GNRC
     gnrc_netreg_entry_t dump = GNRC_NETREG_ENTRY_INIT_PID(GNRC_NETREG_DEMUX_CTX_ALL,
                                                           gnrc_pktdump_pid);
     gnrc_netreg_register(GNRC_NETTYPE_UNDEF, &dump);
+#endif
 
 #if defined(MODULE_DHT)
     /* initialize DHT sensor */
@@ -580,11 +593,11 @@ int main(void)
         puts("[Failed]");
         return 1;
     }
-
-    dht_timer.callback = sensor_measurement;
 #endif
 
-#ifdef MODULE_ASYMCUTE
+    dht_timer.callback = sensor_measurement;
+
+#ifndef MODULE_ASYMCUTE
     puts("Init Asymcute MQTT-SN library\n");
 
     /* setup the connection context */
@@ -615,6 +628,8 @@ int main(void)
     };
 
     d7ap_fs_init_file(SENSOR_FILE_ID, &file_header, NULL);
+
+    sensor_measurement(NULL);
 
     /* start the shell */
     printf("Starting the shell now\r\n");
