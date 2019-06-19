@@ -1,9 +1,9 @@
 APPLICATION = APPD7A
 
 # If no BOARD is found in the environment, use this default:
-BOARD ?= cortus_fpga
+BOARD ?= b-l072z-lrwan1
 
-BOARD_WHITELIST := cortus_fpga
+BOARD_WHITELIST := cortus_fpga b-l072z-lrwan1
 
 # This has to be the absolute path to the RIOT base directory:
 RIOTBASE ?= $(CURDIR)/../..
@@ -15,16 +15,12 @@ USEPKG += d7a
 USEMODULE += d7a_contrib
 USEMODULE += xtimer
 
-#ifneq (,$(filter cortus_fpga,$(BOARD)))
-  DRIVER ?= sx1276
-#endif
+DRIVER ?= sx1276
 
+FEATURES_REQUIRED = periph_spi
+FEATURES_REQUIRED = periph_gpio
 
-#ifneq (,$(filter at86rf2%,$(DRIVER)))
-  FEATURES_REQUIRED = periph_spi
-  FEATURES_REQUIRED = periph_gpio
-#endif
-
+# use SX1276 by default
 USEMODULE += $(DRIVER)
 
 USEMODULE += random
@@ -47,15 +43,7 @@ USEMODULE += auto_init_gnrc_netif
 #USEMODULE += gnrc_pktdump
 #USEMODULE += ipv6_addr
 
-#required for C++ compiling
-#CXXEXFLAGS += -fno-rtti
-#USEMODULE += cpp11-compat
-
-#Define LOG enabled by default
-CFLAGS += -DFRAMEWORK_LOG_ENABLED=yes
-CFLAGS += -DPLATFORM_SX127X_USE_PA_BOOST=yes
 CFLAGS += -Wno-missing-braces
-
 #CFLAGS += -S -save-temps
 
 #export RIOT_CLIB := newlib
