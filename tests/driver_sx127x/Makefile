@@ -11,6 +11,8 @@ USEMODULE += shell_commands
 USEMODULE += ps
 USEMODULE += xtimer
 
+USEPKG += d7a
+USEMODULE += d7a_contrib
 DRIVER ?= sx1276
 
 # use SX1276 by default
