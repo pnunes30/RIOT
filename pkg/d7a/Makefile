@@ -18,8 +18,11 @@ endif
 #D7A_COMMON_FLAGS = -fdata-sections -ffunction-sections -Os
 #D7A_COMMON_FLAGS += -Wno-implicit-fallthrough
 
-TOOLCHAIN_DIR ?=$(HOME)/cortus-ide/
+ifeq ($(CPU_ARCH),cortex-m0plus)
+TOOLCHAIN_FILE=stack/cmake/toolchains/gcc-arm-embedded.cmake
+else
 TOOLCHAIN_FILE=stack/cmake/toolchains/$(CPU_ARCH)-gcc.cmake
+endif
 
 # Add standard include directories
 #INCLUDES += -I$(RIOTBASE)/core/include -I$(RIOTBASE)/drivers/include -I$(RIOTBASE)/sys/include
@@ -36,13 +39,12 @@ CFLAGS := $(filter-out $(CUWFLAGS), $(CFLAGS))
 CFLAGS += -Wno-unused-function -Wno-unused-parameter -Wno-switch -Wno-missing-braces
 
 all: $(PKG_BUILDDIR)/Makefile
-	printenv && \
-	"$(MAKE)" $(INCLUDES) -C $(PKG_BUILDDIR) && \
+	"$(MAKE)" -C $(PKG_BUILDDIR) && \
 	cp $(PKG_BUILDDIR)/modules/modules/d7ap/libd7ap.a $(BINDIR)/$(PKG_NAME).a
 
 $(PKG_BUILDDIR)/Makefile::
 	cd "$(PKG_BUILDDIR)" && \
-	cmake stack/ -DTOOLCHAIN_DIR=$(TOOLCHAIN_DIR) -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN_FILE) -DPLATFORM=$(BOARD)
+	cmake stack/ -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN_FILE) -DEXTERNAL_C_FLAGS="$(INCLUDES)"
 
 prepare: git-download
 
