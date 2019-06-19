@@ -164,7 +164,6 @@ void fs_init(fs_systemfiles_t* provisioning)
     // initialise the blockdevice driver according platform specificities
     // for now, only permanent and volatile storage are supported
     mtd[FS_STORAGE_PERMANENT] = MTD_0;
-    mtd[FS_STORAGE_VOLATILE] = MTD_1;
 #endif
 
     if (provisioning)

@@ -21,6 +21,10 @@
 
 #include <stdint.h>
 
+#if defined(MODULE_MTD)
+#include "mtd.h"
+#endif
+
 #include "cpu.h"
 
 #ifdef __cplusplus
@@ -88,6 +92,30 @@ extern "C" {
  */
 #define BTN_B1_PIN          GPIO_PIN(PORT_B, 2)
 
+#if defined(MODULE_MTD)
+/**
+ * @name    MTD emulation configuration
+ * @{
+ */
+
+#ifndef SECTOR_COUNT
+#define SECTOR_COUNT 2
+#endif
+#ifndef PAGE_PER_SECTOR
+#define PAGE_PER_SECTOR 8
+#endif
+#ifndef PAGE_SIZE
+#define PAGE_SIZE 128
+#endif
+/** @} */
+
+/** mtd flash emulation device */
+extern mtd_dev_t * const mtd0;
+
+/** Default MTD device */
+#define MTD_0 mtd0
+
+#endif
 /**
  * @brief   Initialize board specific hardware, including clock, LEDs and std-IO
  */

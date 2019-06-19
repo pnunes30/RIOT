@@ -26,6 +26,12 @@
 #include "cpu.h"
 #include "periph/eeprom.h"
 
+#if defined(MODULE_MTD)
+#include "board.h"
+#include "mtd.h"
+#include <string.h>
+#endif
+
 #define ENABLE_DEBUG        (0)
 #include "debug.h"
 
@@ -118,3 +124,71 @@ size_t eeprom_write(uint32_t pos, const void *data, size_t len)
 
     return len;
 }
+
+#if defined(MODULE_MTD)
+/*** DUMMY MTD ***/
+#ifndef SECTOR_COUNT
+#define SECTOR_COUNT 2
+#endif
+#ifndef PAGE_PER_SECTOR
+#define PAGE_PER_SECTOR 8
+#endif
+#ifndef PAGE_SIZE
+#define PAGE_SIZE 128
+#endif
+
+
+static int _init(mtd_dev_t *dev)
+{
+    (void)dev;
+    // No memory erase. init is invoked before mount in little_fs.
+    return 0;
+}
+
+static int _read(mtd_dev_t *dev, void *buff, uint32_t addr, uint32_t size)
+{
+    (void)dev;
+
+    return eeprom_read(addr, buff, size);
+}
+
+static int _write(mtd_dev_t *dev, const void *buff, uint32_t addr, uint32_t size)
+{
+    (void)dev;
+
+    return eeprom_write(addr, buff, size);
+}
+
+static int _erase(mtd_dev_t *dev, uint32_t addr, uint32_t size)
+{
+    (void)dev;
+    (void)addr;
+    (void)size;
+    return 0;
+}
+
+static int _power(mtd_dev_t *dev, enum mtd_power_state power)
+{
+    (void)dev;
+    (void)power;
+    return 0;
+}
+
+static const mtd_desc_t mtd_driver = {
+    .init = _init,
+    .read = _read,
+    .write = _write,
+    .erase = _erase,
+    .power = _power,
+};
+
+mtd_dev_t mtd0_dev = {
+    .driver = &mtd_driver,
+    .sector_count = SECTOR_COUNT,
+    .pages_per_sector = PAGE_PER_SECTOR,
+    .page_size = PAGE_SIZE
+};
+
+mtd_dev_t * const mtd0 = &mtd0_dev;
+
+#endif
