@@ -17,8 +17,12 @@ USEMODULE += xtimer
 
 DRIVER ?= sx1276
 
-FEATURES_REQUIRED = periph_spi
-FEATURES_REQUIRED = periph_gpio
+FEATURES_REQUIRED += periph_spi
+FEATURES_REQUIRED += periph_gpio
+
+ifeq ($(BOARD),b-l072z-lrwan1)
+FEATURES_REQUIRED += periph_eeprom
+endif
 
 # use SX1276 by default
 USEMODULE += $(DRIVER)
