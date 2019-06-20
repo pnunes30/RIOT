@@ -66,12 +66,6 @@ void irq_restore(unsigned state);
  */
 int irq_is_in(void);
 
-/**
- * @brief   Check whether irq are enabled
- * @return  true, if irq enabled
- */
-int irq_enabled(void);
-
 #ifdef __cplusplus
 }
 #endif

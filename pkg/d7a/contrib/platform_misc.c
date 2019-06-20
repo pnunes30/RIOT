@@ -55,7 +55,8 @@ __LINK_C void start_atomic(void)
     if (in_atomic++==0) {          //no need for atomic_inc on non smp, non preemptive systems.
         cpsr = irq_disable();
     }
-    assert( (!irq_enabled()) );   //multithread case
+
+    //assert( (!irq_enabled()) );   //multithread case // Do we really need this code?
 }
 
 __LINK_C void end_atomic(void)
