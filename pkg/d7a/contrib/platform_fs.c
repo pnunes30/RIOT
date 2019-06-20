@@ -213,7 +213,7 @@ int _fs_init_permanent_systemfiles(fs_systemfiles_t* permanent_systemfiles)
     }
 
     // initialise system file caching
-    for (int file_id = 0; file_id < permanent_systemfiles->nfiles; file_id++)
+    for (unsigned int file_id = 0; file_id < permanent_systemfiles->nfiles; file_id++)
     {
         files[file_id].storage = FS_STORAGE_PERMANENT;
         files[file_id].length = permanent_systemfiles->files_length[file_id];
@@ -273,6 +273,9 @@ static int _fs_create_magic(fs_storage_class_t storage_class)
 static int _fs_verify_magic(fs_storage_class_t storage_class, uint8_t* expected_magic_number)
 {
     is_fs_init_completed = false;
+    uint8_t magic_number[FS_MAGIC_NUMBER_SIZE];
+
+    memset(magic_number,0,FS_MAGIC_NUMBER_SIZE);
 
 #ifdef MODULE_VFS
     char fn[MAX_FILE_NAME];
@@ -289,9 +292,7 @@ static int _fs_verify_magic(fs_storage_class_t storage_class, uint8_t* expected_
     }
 
     /* read the magic */
-    char magic[FS_MAGIC_NUMBER_SIZE];
-    memset(magic,0,FS_MAGIC_NUMBER_SIZE);
-    rtc = vfs_read(fd, magic, FS_MAGIC_NUMBER_SIZE);
+    rtc = vfs_read(fd, magic_number, FS_MAGIC_NUMBER_SIZE);
     if ( (rtc < 0) || ((unsigned)rtc < FS_MAGIC_NUMBER_SIZE) )
     {
         vfs_close(fd);
@@ -299,22 +300,21 @@ static int _fs_verify_magic(fs_storage_class_t storage_class, uint8_t* expected_
         return rtc;
     }
     vfs_close(fd);
+#else
+
+    mtd[storage_class]->driver->read(mtd[storage_class], magic_number, 0, FS_MAGIC_NUMBER_SIZE);
+#endif
 
     /* compare */
     for (int i = 0; i < (int)FS_MAGIC_NUMBER_SIZE; i++) {
-        if (magic[i] != expected_magic_number[i]) {
-            DPRINT("Error magic[%d] incorrect (%d)", i, magic[i]);
+        if (magic_number[i] != expected_magic_number[i]) {
+            DPRINT("Error magic[%d] incorrect (%d)", i, magic_number[i]);
             return -EFAULT;
         }
     }
-#else
-    uint8_t magic_number[FS_MAGIC_NUMBER_SIZE];
-    memset(magic_number,0,FS_MAGIC_NUMBER_SIZE);
-    mtd[storage_class]->driver->read(mtd[storage_class], magic_number, 0, FS_MAGIC_NUMBER_SIZE);
-    //assert(memcmp(expected_magic_number, magic_number, FS_MAGIC_NUMBER_SIZE) == 0); // if not the FS on EEPROM is not compatible with the current code
-    return -EFAULT;
-#endif
 
+    DPRINT("READ MAGIC NUMBER:");
+    DPRINT_DATA(magic_number, FS_MAGIC_NUMBER_SIZE);
     return 0;
 }
 
@@ -411,7 +411,7 @@ int _fs_create_file(uint8_t file_id, fs_storage_class_t storage_class, const uin
     // update file caching for stat lookup
     files[file_id].storage = storage_class;
     files[file_id].length = length;
-    DPRINT("fs init file(file_id %d, storage %d, addr %p, length %u)",file_id, storage_class, files[file_id].addr, length);
+    DPRINT("fs init file(file_id %d, storage %d, addr %lu, length %lu)",file_id, storage_class, files[file_id].addr, length);
     return 0;
 }
 
@@ -476,7 +476,7 @@ int fs_read_file(uint8_t file_id, uint32_t offset, uint8_t* buffer, uint32_t len
     mtd[storage]->driver->read(mtd[storage], buffer, files[file_id].addr + offset, length);
 #endif
 
-    DPRINT("fs read_file(file_id %d, offset %d, addr %p, length %u)",file_id, offset, files[file_id].addr, length);
+    DPRINT("fs read_file(file_id %d, offset %lu, addr %lu, length %lu)",file_id, offset, files[file_id].addr, length);
     return 0;
 }
 
@@ -526,7 +526,7 @@ int fs_write_file(uint8_t file_id, uint32_t offset, const uint8_t* buffer, uint3
     mtd[storage]->driver->write(mtd[storage], buffer, files[file_id].addr + offset, length);
 #endif
 
-    DPRINT("fs write_file (file_id %d, offset %d, addr %p, length %d)",
+    DPRINT("fs write_file (file_id %d, offset %lu, addr %lu, length %lu)",
            file_id, offset, files[file_id].addr, length);
 
     if(file_modified_callbacks[file_id])
