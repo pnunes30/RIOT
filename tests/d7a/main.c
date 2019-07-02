@@ -221,7 +221,7 @@ void sensor_measurement(void *arg)
     printf("DHT values - temp: %s°C - relative humidity: %s%%\n",
             temp_s, hum_s);
 
-    d7ap_fs_write_file(SENSOR_FILE_ID, 0, (uint8_t*)&temp, sizeof(temp));
+    //d7ap_fs_write_file(SENSOR_FILE_ID, 0, (uint8_t*)&temp, sizeof(temp));
 
     if (send_dht_temp)
     {
@@ -597,7 +597,7 @@ int main(void)
 
     dht_timer.callback = sensor_measurement;
 
-#ifndef MODULE_ASYMCUTE
+#ifdef MODULE_ASYMCUTE
     puts("Init Asymcute MQTT-SN library\n");
 
     /* setup the connection context */
@@ -627,7 +627,7 @@ int main(void)
       .allocated_length = SENSOR_FILE_SIZE
     };
 
-    d7ap_fs_init_file(SENSOR_FILE_ID, &file_header, NULL);
+    //d7ap_fs_init_file(SENSOR_FILE_ID, &file_header, NULL);
 
     sensor_measurement(NULL);
 
