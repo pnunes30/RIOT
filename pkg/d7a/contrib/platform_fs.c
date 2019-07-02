@@ -258,10 +258,6 @@ static int _fs_create_magic(fs_storage_class_t storage_class)
     vfs_close(fd);
 #else
     mtd[storage_class]->driver->write(mtd[storage_class], magic, 0, FS_MAGIC_NUMBER_SIZE);
-    if (storage_class == FS_STORAGE_PERMANENT)
-    	permanent_data_offset += FS_MAGIC_NUMBER_SIZE;
-    else
-        volatile_data_offset += FS_MAGIC_NUMBER_SIZE;
 #endif
 
     /* verify */
@@ -312,6 +308,13 @@ static int _fs_verify_magic(fs_storage_class_t storage_class, uint8_t* expected_
             return -EFAULT;
         }
     }
+
+#ifndef MODULE_VFS
+    if (storage_class == FS_STORAGE_PERMANENT)
+     	permanent_data_offset += FS_MAGIC_NUMBER_SIZE;
+     else
+         volatile_data_offset += FS_MAGIC_NUMBER_SIZE;
+#endif
 
     DPRINT("READ MAGIC NUMBER:");
     DPRINT_DATA(magic_number, FS_MAGIC_NUMBER_SIZE);
