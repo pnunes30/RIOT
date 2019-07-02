@@ -48,6 +48,8 @@ USEMODULE += auto_init_gnrc_netif
 #USEMODULE += ipv6_addr
 
 CFLAGS += -Wno-missing-braces
+CFLAGS += -DFRAMEWORK_LOG_ENABLED=yes
+
 #CFLAGS += -S -save-temps
 
 #export RIOT_CLIB := newlib
