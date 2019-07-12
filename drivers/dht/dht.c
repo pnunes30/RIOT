@@ -133,7 +133,10 @@ int dht_read(dht_t *dev, int16_t *temp, int16_t *hum)
 
     uint32_t now_us = xtimer_now_usec();
     if ((now_us - dev->last_read_us) > DATA_HOLD_TIME) {
-        /* send init signal to device */
+        /* Switch pin to output (workaround)
+         * and send init signal to device
+         */
+        gpio_init(dev->pin, GPIO_OUT);
         gpio_clear(dev->params.pin);
         xtimer_usleep(START_LOW_TIME);
         gpio_set(dev->params.pin);
@@ -173,9 +176,8 @@ int dht_read(dht_t *dev, int16_t *temp, int16_t *hum)
             return DHT_TIMEOUT;
         }
 
-        /* Bring device back to defined state - so we can trigger the next reading
-         * by pulling the data pin low again */
-        _reset(dev);
+        /* No need to change pin configuration, DHT has a pull up, the line will stay high*/
+        //_reset(dev);
 
         /* validate the checksum */
         uint8_t sum = (raw_temp >> 8) + (raw_temp & 0xff) + (raw_hum >> 8)
