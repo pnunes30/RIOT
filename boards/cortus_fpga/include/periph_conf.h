@@ -448,7 +448,7 @@ static const uint16_t spi_divtable[5] = {
         9,    /* -> 5 MHz */
         4     /* -> 10 MHz */
 };
-#elif (CLOCK_FREQUENCY == 16000000)
+#elif (CLOCK_FREQUENCY == 8000000)
 #define SPI_SELCLK 0	/* For CC1101, fsclk.max=6.5MHz. the sysclock and clk1 are @16MHz, clk0 is @32MHz */
 static const uint16_t spi_divtable[5] = {
         /* for clock input @ 16MHz */

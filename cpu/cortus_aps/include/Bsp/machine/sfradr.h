@@ -27,7 +27,7 @@
 #define APS_CPU				"aps3r"
 #endif
 
-#define CLOCK_FREQUENCY              16000000
+#define CLOCK_FREQUENCY              8000000
 #define USB2_CLOCK_FREQUENCY         50000000
 
 #define CLOCK_SOURCE0               (32000000U)
