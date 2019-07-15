@@ -825,6 +825,8 @@ void sx127x_set_bandwidth(sx127x_t *dev, uint32_t bandwidth) /* _APS_OSS7_ FSK b
             }
 
             sx127x_reg_write(dev, SX127X_REG_RXBW, reg_bw);
+            // set the same bandwidth for AFC
+            sx127x_reg_write(dev, SX127X_REG_AFCBW, reg_bw);
         } break;
 
         case SX127X_MODEM_LORA:

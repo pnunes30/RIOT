@@ -1014,29 +1014,27 @@ void _on_dio1_irq(void *arg)
                         /*if (!(dev->settings.fsk.flags & SX127X_RX_CONTINUOUS_FLAG)) {
                             sx127x_set_state(dev, SX127X_RF_IDLE);
                         }*/
-                        // sx127x_set_standby(dev); // Do we need to force the standby mode ?
-
                         netdev->event_callback(netdev, NETDEV_EVENT_RX_COMPLETE);
 
-                        // The reception is restarted by the upper layer
+                        // reception is continuous until upper layer decides to stop it
                         dev->packet.fifothresh = 0;
                         dev->packet.length = 0;
                         dev->packet.pos = 0;
 
-                        /*sx127x_reg_write(dev, SX127X_REG_FIFOTHRESH, 0x83);
-                        sx127x_reg_write(dev, SX127X_REG_DIOMAPPING1, 0x0C);
+                        sx127x_reg_write(dev, SX127X_REG_FIFOTHRESH, SX127X_RF_FIFOTHRESH_TXSTARTCONDITION_FIFONOTEMPTY | 0x03);
+                        sx127x_reg_write(dev, SX127X_REG_DIOMAPPING1, SX127X_RF_DIOMAPPING1_DIO2_11);
                         sx127x_reg_write(dev, SX127X_REG_PAYLOADLENGTH, 0x00);
 
                         // Trigger a manual restart of the Receiver chain (no frequency change)
-                        sx127x_reg_write(dev, SX127X_REG_RXCONFIG, 0x4E);
+                        sx127x_reg_write(dev, SX127X_REG_RXCONFIG, SX127X_RF_RXCONFIG_RESTARTRXWITHOUTPLLLOCK |
+                                               SX127X_RF_RXCONFIG_AFCAUTO_ON |
+                                               SX127X_RF_RXCONFIG_AGCAUTO_ON |
+                                               SX127X_RF_RXCONFIG_RXTRIGER_PREAMBLEDETECT);
                         sx127x_flush_fifo(dev);
-
-                        // Seems that the SyncAddressMatch is not cleared after the flush, so set again the RX mode
-                        sx127x_set_op_mode(dev, SX127X_RF_OPMODE_RECEIVER);
 
                         assert(gpio_init_int(dev->params.dio1_pin, GPIO_IN, GPIO_RISING,
                                              sx127x_on_dio1_isr, dev) >= 0);
-                        gpio_irq_enable(dev->params.dio1_pin);*/
+                        gpio_irq_enable(dev->params.dio1_pin);
                         return;
                     }
 
