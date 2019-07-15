@@ -32,7 +32,7 @@ USEMODULE += shell
 USEMODULE += shell_commands
 USEMODULE += ps
 
-#USEMODULE += dht
+USEMODULE += dht
 USEMODULE += fmt
 
 # Use modules for networking

@@ -629,8 +629,6 @@ int main(void)
 
     //d7ap_fs_init_file(SENSOR_FILE_ID, &file_header, NULL);
 
-    sensor_measurement(NULL);
-
     /* start the shell */
     printf("Starting the shell now\r\n");
     char line_buf[SHELL_DEFAULT_BUFSIZE];
