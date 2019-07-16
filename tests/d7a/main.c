@@ -91,13 +91,49 @@ static char listener_stack[ASYMCUTE_LISTENER_STACKSIZE];
 static asymcute_con_t d7a_connection;
 static asymcute_req_t _reqs[REQ_CTX_NUMOF];
 static asymcute_sub_t d7a_subscription;
-static asymcute_topic_t d7a_topic;
+static asymcute_topic_t d7a_topic_temp;
+static asymcute_topic_t d7a_topic_hum;
+static asymcute_topic_t d7a_topic_st;
 static asymcute_topic_t d7a_sub_topic;
+static asymcute_will_t d7a_will;
+static uint8_t registration_status = 0;
+static uint8_t init_status = 0;
+static uint8_t counter_error;
+static uint16_t sleep_time = 0;
 
-const char cli_id[] = "D7A_SENSOR";
-#define topic_prefix "d7a"
-#define topic_temp   "temp"
-#define topic_hum    "hum"
+/**
+ * @brief   Possible states
+ */
+enum {
+    MQTT_CONNECTING,            /**< connecting to gateway */
+    MQTT_REGISTERING,           /**< registering topic */
+    MQTT_DISCONNECTING,         /**< connection got disconnected */
+    MQTT_PUBLISHING,            /**< data was published */
+    MQTT_SUBSCRIBING,           /**< client was subscribed to topic */
+    MQTT_UNSUBSCRIBING,         /**< client was unsubscribed from topic */
+    MQTT_WILLTOPIC,             /**< client should provide a will topic name */
+    MQTT_WILLMSG,               /**< client should provide will msg */
+    MQTT_ASLEEP,                /**< client is asleep */
+    MQTT_TIMEOUT,               /**< request timed out */
+    MQTT_CANCELED,              /**< request was canceled */
+    MQTT_REJECTED               /**< request was rejected */
+};
+
+char cli_id[ASYMCUTE_ID_MAXLEN];
+#define topic_prefix    "d7a"
+#define topic_status    "status"
+#define topic_temp      "temp"
+#define topic_hum       "hum"
+#define topic_timeout   "timeout"
+
+char topic_status_name[128];
+char topic_temp_name[128];
+char topic_hum_name[128];
+char topic_timeout_name[128];
+unsigned long topic_status_size = sizeof(node_addr_string) + sizeof(topic_prefix) + sizeof(topic_status);
+unsigned long topic_temp_size = sizeof(node_addr_string) + sizeof(topic_prefix) + sizeof(topic_temp);
+unsigned long topic_hum_size = sizeof(node_addr_string) + sizeof(topic_prefix) + sizeof(topic_hum);
+unsigned long topic_timeout_size = sizeof(node_addr_string) + sizeof(topic_prefix) + sizeof(topic_timeout);
 
 static asymcute_req_t *_get_req_ctx(void)
 {
@@ -239,7 +275,7 @@ void sensor_measurement(void *arg)
 
         /* publish data */
         size_t len = strlen(temp_s);
-        if (asymcute_publish(&d7a_connection, req, &d7a_topic, temp_s, len, MQTTSN_QOS_1) != ASYMCUTE_OK)
+        if (asymcute_publish(&d7a_connection, req, &d7a_topic_temp, temp_s, len, MQTTSN_QOS_1) != ASYMCUTE_OK)
         {
             puts("error: unable to send PUBLISH message");
             goto repeat;
@@ -364,7 +400,7 @@ static int _cmd_d7a(int argc, char **argv)
                 return 1;
             }
 
-            if (asymcute_disconnect(&d7a_connection, req) != ASYMCUTE_OK) {
+            if (asymcute_disconnect(&d7a_connection, req, sleep_time) != ASYMCUTE_OK) {
                 puts("error: failed to issue DISCONNECT request");
                 return 1;
             }
@@ -465,9 +501,13 @@ static void _on_pub_evt(const asymcute_sub_t *sub, unsigned evt_type,
         puts("");
         printf("              -> %u bytes\n", (unsigned)len);
 
-        // update timeout value
-        timeout = atoi(data) * US_PER_SEC;
-        printf("sensor measurement period is updated-> %lu us\n", timeout);
+        if(strcmp(sub->topic->name, topic_timeout_name) == 0)
+        {
+            // update timeout value
+            timeout = atoi(data) * US_PER_SEC;
+            printf("sensor measurement period is updated-> %lu us\n", timeout);
+        }
+
     }
     else if (evt_type == ASYMCUTE_CANCELED) {
         printf("subscription -> topic #%i [%s]: CANCELED\n",
@@ -475,97 +515,211 @@ static void _on_pub_evt(const asymcute_sub_t *sub, unsigned evt_type,
     }
 }
 
+
+void mqtt_client_register(asymcute_topic_t *topic, const char *topic_name)
+{
+    /* get request context */
+    asymcute_req_t *req = _get_req_ctx();
+    if (req == NULL) {
+        puts("error getting request context");
+    }
+
+    if (asymcute_topic_is_init(topic) == 0){
+        if (asymcute_topic_init(topic, topic_name, 0) != ASYMCUTE_OK) {
+            puts("error: unable to initialize topic");
+            return;
+        }
+    }
+    if (asymcute_register(&d7a_connection, req, topic) != ASYMCUTE_OK) {
+        puts("error: unable to send REGISTER request\n");
+        return;
+    }
+}
+
+
+/* MQTT CLIENT INIT */
+void mqtt_client_init(unsigned state)
+{
+    int ret = 0;
+
+    printf("MQTT Init state : %d\r\n", state);
+    switch(state) {
+        case MQTT_CONNECTING:
+        {
+            /* get request context */
+            asymcute_req_t *req = _get_req_ctx();
+            if (req == NULL) {
+                puts("error getting request context");
+            }
+
+            ret = asymcute_connect(&d7a_connection, req, cli_id, NULL, false, &d7a_will);
+            if (ret != ASYMCUTE_OK) {
+                puts("error: failed to issue CONNECT request");
+                printf("error %d\n", ret);
+            }
+            break;
+        }
+        case MQTT_REGISTERING:
+            mqtt_client_register(&d7a_topic_st, topic_status_name);
+            mqtt_client_register(&d7a_topic_temp, topic_temp_name);
+            mqtt_client_register(&d7a_topic_hum, topic_hum_name);
+            registration_status = 1;
+            break;
+        case MQTT_SUBSCRIBING:
+        {
+            /* get request context */
+            asymcute_req_t *req = _get_req_ctx();
+            if (req == NULL) {
+                puts("error getting request context");
+            }
+
+            if (asymcute_topic_is_init(&d7a_sub_topic) == 0){
+                if (asymcute_topic_init(&d7a_sub_topic, topic_timeout_name, 4) != ASYMCUTE_OK) {
+                    puts("error: unable to initialize topic");
+                    return;
+                }
+            }
+            if (asymcute_subscribe(&d7a_connection, req, &d7a_subscription, &d7a_sub_topic,
+                            _on_pub_evt, NULL, MQTTSN_QOS_0 | MQTTSN_DUP) != ASYMCUTE_OK) {
+                asymcute_topic_reset(&d7a_sub_topic);
+                puts("error: unable to send SUBSCRIBE request");
+                return;
+            }
+            break;
+        }
+        case MQTT_PUBLISHING:
+        {
+            char status[] = "online";
+            size_t len = strlen(status);
+
+            /* get request context */
+            asymcute_req_t *req = _get_req_ctx();
+            if (req == NULL) {
+                puts("error getting request context");
+            }
+
+            if (asymcute_publish(&d7a_connection, req, &d7a_topic_st, status,
+                                            len, MQTTSN_QOS_1) != ASYMCUTE_OK)
+            {
+                puts("error: unable to send PUBLISH message");
+            }
+        }
+        break;
+        default:
+            puts("\r\nunknown event");
+            break;
+    }
+}
+static void on_err_evt(asymcute_req_t *req)
+{
+    printf("Message type: %d\n", req->data[1]);
+    switch (req->data[1]){
+        case MQTTSN_SEARCHGW:
+            printf("ERROR: Can't find any gateway after %d attempts..."
+                    ,ASYMCUTE_N_RETRY+1);
+            break;
+        case MQTTSN_CONNECT:
+            printf("ERROR: Can't connect to the gateway after %d "
+                    "attempts...\nRetrying...\n", ASYMCUTE_N_RETRY+1);
+            counter_error++;
+            if (counter_error >= 2) {
+                counter_error = 0;
+                printf("ERROR: CAN'T CONNECT ! \nShutting down ...\n");
+                break;
+            }else{
+                mqtt_client_init(MQTT_CONNECTING);
+            }
+            break;
+        case MQTTSN_DISCONNECT:
+            break;
+        case MQTTSN_REGISTER:
+          // TODO restart the connection procedure ?
+            break;
+        case MQTTSN_PUBLISH:
+            mqtt_client_init(MQTT_PUBLISHING);
+            break;
+        case MQTTSN_SUBSCRIBE:
+            mqtt_client_init(MQTT_SUBSCRIBING);
+            break;
+        case MQTTSN_UNSUBSCRIBE:
+            break;
+    }
+}
 static void _on_con_evt(asymcute_req_t *req, unsigned evt_type)
 {
     printf("MQTT Request %p: event type %d", (void *)req, evt_type);
     switch (evt_type) {
         case ASYMCUTE_TIMEOUT:
-            puts("Timeout");
+            puts("\r\nTimeout");
             break;
         case ASYMCUTE_REJECTED:
-            puts("Rejected by gateway");
+            puts("\r\nRejected by gateway");
             break;
         case ASYMCUTE_CONNECTED:
-            {
-                puts("Connection to gateway established");
-
-                if (asymcute_topic_is_reg(&d7a_topic))
-                {
-                    sensor_measurement(NULL);
-                    return;
-                }
-
-                /* send registration request */
-                asymcute_req_t *req = _get_req_ctx();
-                if (req == NULL) {
-                    return ;
-                }
-
-                char topic_string[128];
-
-                snprintf(topic_string, sizeof(topic_string), "%s/%s/%s", topic_prefix, node_addr_string, topic_temp);
-                printf("\nSubscribe to topic: %s\n", topic_string);
-
-                if (asymcute_topic_init(&d7a_topic, topic_string, 0) != ASYMCUTE_OK) {
-                    puts("error: unable to initialize topic");
-                    return;
-                }
-                if (asymcute_register(&d7a_connection, req, &d7a_topic) != ASYMCUTE_OK) {
-                    puts("error: unable to send REGISTER request\n");
-                    return;
-                }
+            puts("\r\nConnection to gateway established");
+            if (init_status == 1) {
+                mqtt_client_init(MQTT_REGISTERING);
             }
             break;
         case ASYMCUTE_DISCONNECTED:
-            puts("Connection to gateway closed");
-            //_topics_clear();
+            puts("\r\nConnection to gateway closed");
+            break;
+        case ASYMCUTE_ASLEEP:
+            puts("\r\nDevice is asleep");
             break;
         case ASYMCUTE_REGISTERED:
-            {
-                puts("Topic registered");
-
-                /* send subscription request */
-                asymcute_req_t *req = _get_req_ctx();
-                if (req == NULL) {
-                    return ;
-                }
-
-                char topic_string[128];
-
-                snprintf(topic_string, sizeof(topic_string), "%s/%s/%s", topic_prefix, node_addr_string, topic_hum);
-                printf("\nSubscribe to topic: %s\n", topic_string);
-
-                if (asymcute_topic_init(&d7a_topic, topic_string, 0) != ASYMCUTE_OK) {
-                    puts("error: unable to initialize topic");
-                    return;
-                }
-
-                if (asymcute_subscribe(&d7a_connection, req, &d7a_subscription, &d7a_sub_topic, _on_pub_evt, NULL, MQTTSN_QOS_1 | MQTTSN_DUP)
-                    != ASYMCUTE_OK) {
-                    asymcute_topic_reset(&d7a_sub_topic);
-                    puts("error: unable to send SUBSCRIBE request");
-                    return;
+            puts("\r\nTopic registered");
+            if ((registration_status == 1) && (init_status == 1)){
+                if (req->con->pending == NULL) // list of registers is void
+                {
+                    mqtt_client_init(MQTT_SUBSCRIBING);
+                    registration_status = 0;
                 }
             }
             break;
         case ASYMCUTE_PUBLISHED:
-            puts("Data was published");
+            puts("\r\nData was published");
+            if (init_status == 1){
+                init_status = 0;
+                /* Start the measurement */
+                sensor_measurement(NULL);
+            }
             break;
         case ASYMCUTE_SUBSCRIBED:
-            puts("Subscribed topic");
-
-            // it's time to start the measurement
-            sensor_measurement(NULL);
-
+            puts("\r\nSubscribed topic");
+            if (init_status == 1)
+                mqtt_client_init(MQTT_PUBLISHING);
             break;
         case ASYMCUTE_UNSUBSCRIBED:
-            puts("Unsubscribed topic");
+            puts("\r\nUnsubscribed topic");
             break;
         case ASYMCUTE_CANCELED:
-            puts("Canceled");
+            puts("\r\nCanceled");
+            on_err_evt(req);
+            break;
+        case ASYMCUTE_WILLTOPIC:
+        {
+            /* get request context */
+            asymcute_req_t *req = _get_req_ctx();
+            if (req == NULL) {
+                puts("\r\nerror getting request context");
+            }
+            asymcute_willtopic(&d7a_connection, req, &d7a_will,
+                                              MQTTSN_QOS_0 | MQTTSN_RETAIN);
+        }
+        break;
+        case ASYMCUTE_WILLMSG:
+        {
+            /* get request context */
+            asymcute_req_t *req = _get_req_ctx();
+            if (req == NULL) {
+                puts("\r\nerror getting request context");
+            }
+            asymcute_willmsg(&d7a_connection, req, &d7a_will);
+        }
             break;
         default:
-            puts("unknown event");
+            puts("\r\nunknown event");
             break;
     }
 }
@@ -578,7 +732,7 @@ void init_node_address_string(void)
 
     fmt_bytes_hex(node_addr_string, node_addr.address64, sizeof(node_addr.address64));
     node_addr_string[sizeof(node_addr.address64) * 2] = '\0';
-    printf("\nNode Address: %s\n", node_addr_string);
+    printf("\r\nNode Address: %s\n", node_addr_string);
 }
 
 
@@ -629,10 +783,28 @@ int main(void)
         return 1;
     }
 
-    if (asymcute_connect(&d7a_connection, req, cli_id, NULL, true, NULL) != ASYMCUTE_OK) {
-        puts("error: failed to issue CONNECT request");
-        return 1;
-    }
+    init_node_address_string();
+
+    registration_status = 0;
+    init_status = 1;
+    d7a_will.msg = "offline";
+    d7a_will.msg_len = (size_t)(strlen(d7a_will.msg));
+    strncpy(d7a_will.topic, topic_status_name, topic_status_size);
+    snprintf(cli_id, sizeof(cli_id), "d7a_%s", node_addr_string);
+    snprintf(topic_status_name, topic_status_size, "%s/%s/%s", topic_prefix,
+             node_addr_string, topic_status);
+    snprintf(topic_temp_name, topic_temp_size, "%s/%s/%s", topic_prefix,
+             node_addr_string, topic_temp);
+    snprintf(topic_hum_name, topic_hum_size, "%s/%s/%s", topic_prefix,
+             node_addr_string, topic_hum);
+    snprintf(topic_timeout_name, topic_timeout_size, "%s/%s/%s", topic_prefix,
+             node_addr_string, topic_timeout);
+    printf("cli_id: %s\n", cli_id);
+    printf("Status topic: %s\n", topic_status_name);
+
+    /* Start mqtt init */
+    mqtt_client_init(MQTT_CONNECTING);
+
 #endif
 
     // finally, register the sensor file, configured to use D7AActP
@@ -647,8 +819,6 @@ int main(void)
     };
 
     d7ap_fs_init_file(SENSOR_FILE_ID, &file_header, NULL);
-
-    init_node_address_string();
 
     /* start the shell */
     printf("Starting the shell now\r\n");
