@@ -120,6 +120,8 @@ int dht_init(dht_t *dev, const dht_params_t *params)
 
     xtimer_usleep(2000 * US_PER_MS);
 
+    gpio_init(dev->pin, dev->in_mode);
+
     DEBUG("dht_init: success\n");
     return DHT_OK;
 }
