@@ -49,6 +49,7 @@ USEMODULE += auto_init_gnrc_netif
 
 CFLAGS += -Wno-missing-braces
 CFLAGS += -DFRAMEWORK_LOG_ENABLED=yes
+CFLAGS += -DPLATFORM_SX127X_USE_PA_BOOST=yes
 
 #CFLAGS += -S -save-temps
 
