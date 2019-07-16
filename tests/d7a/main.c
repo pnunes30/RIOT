@@ -45,6 +45,7 @@
 
 /* Address Id is at most 8 bytes long (e.g. 16 hex chars) */
 static char addr_hex_string[ID_TYPE_UID_ID_LENGTH * 2 + 1];
+static char node_addr_string[ID_TYPE_UID_ID_LENGTH * 2 + 1];
 
 uint8_t resp_len = 0;
 
@@ -94,6 +95,9 @@ static asymcute_topic_t d7a_topic;
 static asymcute_topic_t d7a_sub_topic;
 
 const char cli_id[] = "D7A_SENSOR";
+#define topic_prefix "d7a"
+#define topic_temp   "temp"
+#define topic_hum    "hum"
 
 static asymcute_req_t *_get_req_ctx(void)
 {
@@ -271,19 +275,13 @@ static int _cmd_d7a(int argc, char **argv)
         }
 
         if (strcmp("devaddr", argv[2]) == 0) {
-            d7ap_addressee_t devaddr;
-            d7ap_get_dev_addr(devaddr.id);
-
-            uint8_t len = d7ap_addressee_id_length(devaddr.ctrl.id_type);
-            fmt_bytes_hex(addr_hex_string, devaddr.id, len);
-            addr_hex_string[len * 2] = '\0';
-            printf("Device Address: %s\n", addr_hex_string);
+            printf("\nDevice Address: %s\n", node_addr_string);
         }
         else if (strcmp("class", argv[2]) == 0) {
-            printf("Device Access class: 0x%02X\n", d7ap_get_access_class());
+            printf("\nDevice Access class: 0x%02X\n", d7ap_get_access_class());
         }
         else if (strcmp("tx_power", argv[2]) == 0) {
-            printf("TX power index: %d\n", d7ap_get_tx_power());
+            printf("\nTX power index: %d\n", d7ap_get_tx_power());
         }
         else {
             _d7a_get_usage();
@@ -502,8 +500,12 @@ static void _on_con_evt(asymcute_req_t *req, unsigned evt_type)
                     return ;
                 }
 
-                uint16_t id = 0;
-                if (asymcute_topic_init(&d7a_topic, "temp", id) != ASYMCUTE_OK) {
+                char topic_string[128];
+
+                snprintf(topic_string, sizeof(topic_string), "%s/%s/%s", topic_prefix, node_addr_string, topic_temp);
+                printf("\nSubscribe to topic: %s\n", topic_string);
+
+                if (asymcute_topic_init(&d7a_topic, topic_string, 0) != ASYMCUTE_OK) {
                     puts("error: unable to initialize topic");
                     return;
                 }
@@ -527,7 +529,12 @@ static void _on_con_evt(asymcute_req_t *req, unsigned evt_type)
                     return ;
                 }
 
-                if (asymcute_topic_init(&d7a_sub_topic, "timeout", 0) != ASYMCUTE_OK) {
+                char topic_string[128];
+
+                snprintf(topic_string, sizeof(topic_string), "%s/%s/%s", topic_prefix, node_addr_string, topic_hum);
+                printf("\nSubscribe to topic: %s\n", topic_string);
+
+                if (asymcute_topic_init(&d7a_topic, topic_string, 0) != ASYMCUTE_OK) {
                     puts("error: unable to initialize topic");
                     return;
                 }
@@ -562,6 +569,17 @@ static void _on_con_evt(asymcute_req_t *req, unsigned evt_type)
     }
 }
 #endif
+
+void init_node_address_string()
+{
+    d7a_address node_addr;
+    d7a_get_node_address(&node_addr);
+
+    fmt_bytes_hex(node_addr_string, node_addr.address64, sizeof(node_addr.address64));
+    node_addr_string[sizeof(node_addr.address64) * 2] = '\0';
+    printf("\nNode Address: %s\n", node_addr_string);
+}
+
 
 int main(void)
 {
@@ -629,6 +647,8 @@ int main(void)
 
     //d7ap_fs_init_file(SENSOR_FILE_ID, &file_header, NULL);
 
+    init_node_address_string();
+
     /* start the shell */
     printf("Starting the shell now\r\n");
     char line_buf[SHELL_DEFAULT_BUFSIZE];
@@ -636,3 +656,4 @@ int main(void)
 
     return 0;
 }
+

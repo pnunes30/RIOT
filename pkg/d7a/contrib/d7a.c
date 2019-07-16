@@ -252,3 +252,15 @@ int d7a_broadcast(const uint8_t* payload, uint8_t len)
 
     return res;
 }
+
+void d7a_get_node_address(d7a_address* addr)
+{
+    d7ap_addressee_t devaddr;
+
+    devaddr.ctrl.id_type = d7ap_get_dev_addr(devaddr.id);
+
+    uint8_t len = d7ap_addressee_id_length(devaddr.ctrl.id_type);
+
+    memset(addr->address64, 0, sizeof(addr->address64));
+    memcpy(addr->address64, devaddr.id, len);
+}

@@ -96,6 +96,13 @@ int d7a_unicast(const uint8_t* payload, uint8_t len, d7a_address* sendto);
  */
 int d7a_broadcast(const uint8_t* payload, uint8_t len);
 
+/**
+ * @brief   Get D7A internal L2 address.
+ *
+ * @param[in] addr   Address of node
+ */
+void d7a_get_node_address(d7a_address* addr);
+
 #ifdef __cplusplus
 }
 #endif
