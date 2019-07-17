@@ -97,6 +97,16 @@ static const vfs_mount_t* const d7a_fs[] = {
 static uint32_t volatile_data_offset = 0;
 static uint32_t permanent_data_offset = 0;
 
+#if !defined(MTD_0)
+extern mtd_dev_t * const mtd0;
+#define MTD_0 mtd0
+#endif
+
+#if !defined(MTD_1)
+extern mtd_dev_t * const mtd1;
+#define MTD_1 mtd1
+#endif
+
 static mtd_dev_t* mtd[FS_STORAGE_CLASS_NUMOF];
 
 #endif
@@ -164,6 +174,7 @@ void fs_init(fs_systemfiles_t* provisioning)
     // initialise the blockdevice driver according platform specificities
     // for now, only permanent and volatile storage are supported
     mtd[FS_STORAGE_PERMANENT] = MTD_0;
+    mtd[FS_STORAGE_VOLATILE] = MTD_1;
 #endif
 
     if (provisioning)

@@ -225,7 +225,8 @@ void sensor_measurement(void *arg)
     printf("DHT values - temp: %s°C - relative humidity: %s%%\n",
             temp_s, hum_s);
 
-    //d7ap_fs_write_file(SENSOR_FILE_ID, 0, (uint8_t*)&temp, sizeof(temp));
+    uint32_t value= ((uint32_t)hum << 16) | (uint16_t)temp;
+    d7ap_fs_write_file(SENSOR_FILE_ID, 0, (uint8_t*)&value, sizeof(value));
 
     if (send_dht_temp)
     {
@@ -570,7 +571,7 @@ static void _on_con_evt(asymcute_req_t *req, unsigned evt_type)
 }
 #endif
 
-void init_node_address_string()
+void init_node_address_string(void)
 {
     d7a_address node_addr;
     d7a_get_node_address(&node_addr);
@@ -645,7 +646,7 @@ int main(void)
       .allocated_length = SENSOR_FILE_SIZE
     };
 
-    //d7ap_fs_init_file(SENSOR_FILE_ID, &file_header, NULL);
+    d7ap_fs_init_file(SENSOR_FILE_ID, &file_header, NULL);
 
     init_node_address_string();
 
