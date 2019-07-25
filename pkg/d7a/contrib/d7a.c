@@ -231,6 +231,7 @@ int d7a_broadcast(const uint8_t* payload, uint8_t len)
 {
     uint16_t trans_id = 0;
     error_t res;
+    uint8_t expected_response_len = DEFAULT_RESP_LEN;
 
     DEBUG("D7A broadcast\n");
 
@@ -242,8 +243,10 @@ int d7a_broadcast(const uint8_t* payload, uint8_t len)
     }
 
     session_config.addressee = broadcast_addr;
+    if ((session_config.qos.qos_resp_mode == SESSION_RESP_MODE_NO) || (session_config.qos.qos_resp_mode == SESSION_RESP_MODE_NO_RPT))
+            expected_response_len = 0;
 
-    res = d7ap_send(d7a_instance, &session_config, (uint8_t *)payload, len, 0, &trans_id);
+    res = d7ap_send(d7a_instance, &session_config, (uint8_t *)payload, len, expected_response_len, &trans_id);
     if ( res != 0)
     {
         DEBUG("d7ap_send failed\n");
