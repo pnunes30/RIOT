@@ -184,7 +184,18 @@ int16_t sx127x_read_rssi(sx127x_t *dev)
         sx127x_set_state(dev, SX127X_RF_RX_RUNNING);        //FIXME: discard const qualifier. allowed to change state ???
         /* Set radio in continuous reception */
         sx127x_set_op_mode(dev, SX127X_RF_OPMODE_RECEIVER);
-        xtimer_usleep(700); // wait settling time and RSSI smoothing time
+        uint8_t flags = sx127x_reg_read(dev, SX127X_REG_IRQFLAGS1);
+
+        DEBUG("FlagsIRQ1: %x", flags);
+
+        // RSSI value available when flag is set
+        while(!(flags & SX127X_RF_IRQFLAGS1_RSSI))
+        {
+             DEBUG("FlagsIRQ1: %x means that RSSI not available! ", flags);
+             flags = sx127x_reg_read(dev, SX127X_REG_IRQFLAGS1);
+        }
+
+        //xtimer_usleep(700); // wait settling time and RSSI smoothing time
     }
 #endif
 
