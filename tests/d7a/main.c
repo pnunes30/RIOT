@@ -37,7 +37,7 @@
 #include "debug.h"
 
 /* set interval to 5 second */
-#define INTERVAL (5U * US_PER_SEC)
+#define INTERVAL (5 * US_PER_SEC)
 
 #define SENSOR_FILE_ID           0x40
 #define SENSOR_FILE_SIZE         4
