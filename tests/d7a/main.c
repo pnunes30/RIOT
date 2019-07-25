@@ -812,7 +812,6 @@ int main(void)
     init_status = 1;
     d7a_will.msg = "offline";
     d7a_will.msg_len = (size_t)(strlen(d7a_will.msg));
-    strncpy(d7a_will.topic, topic_status_name, topic_status_size);
     snprintf(cli_id, sizeof(cli_id), "d7a_%s", node_addr_string);
     snprintf(topic_status_name, topic_status_size, "%s/%s/%s", topic_prefix,
              node_addr_string, topic_status);
@@ -822,6 +821,7 @@ int main(void)
              node_addr_string, topic_hum);
     snprintf(topic_timeout_name, topic_timeout_size, "%s/%s/%s", topic_prefix,
              node_addr_string, topic_timeout);
+    strncpy(d7a_will.topic, topic_status_name, topic_status_size);
     printf("cli_id: %s\n", cli_id);
     printf("Status topic: %s\n", topic_status_name);
 
