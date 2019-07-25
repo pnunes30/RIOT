@@ -35,7 +35,7 @@
 #include "sx127x_params.h"      /* FIXME: normally project specific */
 #endif
 
-#define ENABLE_DEBUG (1)
+#define ENABLE_DEBUG (0)
 #include "debug.h"
 
 /* Internal helper functions */
@@ -1032,9 +1032,10 @@ void _on_dio1_irq(void *arg)
                                                SX127X_RF_RXCONFIG_RXTRIGER_PREAMBLEDETECT);
                         sx127x_flush_fifo(dev);
 
-                        assert(gpio_init_int(dev->params.dio1_pin, GPIO_IN, GPIO_RISING,
+                        sx127x_set_rx(dev);
+                        /*assert(gpio_init_int(dev->params.dio1_pin, GPIO_IN, GPIO_RISING,
                                              sx127x_on_dio1_isr, dev) >= 0);
-                        gpio_irq_enable(dev->params.dio1_pin);
+                        gpio_irq_enable(dev->params.dio1_pin);*/
                         return;
                     }
 
