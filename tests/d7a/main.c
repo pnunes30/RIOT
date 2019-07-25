@@ -51,7 +51,7 @@ uint8_t resp_len = 0;
 
 d7ap_session_config_t session_config = {
   .qos = {
-    .qos_resp_mode = SESSION_RESP_MODE_NO,
+    .qos_resp_mode = SESSION_RESP_MODE_ANY,
     .qos_retry_mode = SESSION_RETRY_MODE_NO,
     .qos_stop_on_error = false,
     .qos_record = false
