@@ -176,7 +176,7 @@ static asymcute_req_t *_req_preprocess(asymcute_con_t *con,
     }
 
     if (res) {
-        res->con = NULL;
+        //res->con = NULL;
         event_timeout_clear(&res->to_timer);
     }
     return res;
@@ -391,6 +391,9 @@ static void _on_gw_info(asymcute_con_t *con, const uint8_t *data, size_t len)
 {
     mutex_lock(&con->lock);
     asymcute_req_t *req = _req_preprocess(con, len, MINLEN_GWINFO, NULL, 0);
+    /* if not use later by the application, releasing the request
+       as it should be done in the _req_preprocess function */
+    req->con = NULL;
 
     //asymcute_req_t *req = con->pending;
     if ((req == NULL) || (con->state != SEARCHING_GW)) {
@@ -428,6 +431,10 @@ static void _on_connack(asymcute_con_t *con, const uint8_t *data, size_t len)
 {
     mutex_lock(&con->lock);
     asymcute_req_t *req = _req_preprocess(con, len, MINLEN_CONNACK, NULL, 0);
+    /* if not use later by the application, releasing the request
+       as it should be done in the _req_preprocess function */
+    req->con = NULL;
+
     if (req == NULL) {
         DEBUG("_on_connack ERROR req = NULL\n");
         mutex_unlock(&con->lock);
@@ -454,6 +461,9 @@ static void _on_disconnect(asymcute_con_t *con, size_t len)
     /* we might have triggered the DISCONNECT process ourselves, so make sure
      * the pending request is being handled */
     asymcute_req_t *req = _req_preprocess(con, len, MINLEN_DISCONNECT, NULL, 0);
+    /* if not use later by the application, releasing the request
+       as it should be done in the _req_preprocess function */
+    req->con = NULL;
 
     if (con->state != SLEEPING) {
         /* put the connection back to NOTCON in any case and let the user know */
@@ -562,6 +572,10 @@ static void _on_puback(asymcute_con_t *con, const uint8_t *data, size_t len)
     mutex_lock(&con->lock);
     asymcute_req_t *req = _req_preprocess(con, len, MINLEN_PUBACK,
                                           data, IDPOS_PUBACK);
+    /* if not use later by the application, releasing the request
+       as it should be done in the _req_preprocess function */
+    req->con = NULL;
+
     if (req == NULL) {
         mutex_unlock(&con->lock);
         return;
@@ -579,6 +593,10 @@ static void _on_suback(asymcute_con_t *con, const uint8_t *data, size_t len)
     mutex_lock(&con->lock);
     asymcute_req_t *req = _req_preprocess(con, len, MINLEN_SUBACK,
                                           data, IDPOS_SUBACK);
+    /* if not use later by the application, releasing the request
+       as it should be done in the _req_preprocess function */
+    req->con = NULL;
+
     if (req == NULL) {
         mutex_unlock(&con->lock);
         return;
@@ -607,6 +625,10 @@ static void _on_unsuback(asymcute_con_t *con, const uint8_t *data, size_t len)
     mutex_lock(&con->lock);
     asymcute_req_t *req = _req_preprocess(con, len, MINLEN_UNSUBACK,
                                           data, IDPOS_UNSUBACK);
+    /* if not use later by the application, releasing the request
+       as it should be done in the _req_preprocess function */
+    req->con = NULL;
+
     if (req == NULL) {
         mutex_unlock(&con->lock);
         return;
@@ -640,6 +662,10 @@ static void _on_willtopicreq(asymcute_con_t *con, const uint8_t *data, size_t le
     mutex_lock(&con->lock);
 
     asymcute_req_t *req = _req_preprocess(con, len, MINLEN_WILLTOPICREQ, NULL, 0);
+    /* if not use later by the application, releasing the request
+       as it should be done in the _req_preprocess function */
+    req->con = NULL;
+
     if (req == NULL) {
         DEBUG("_on_willtopicreq ERROR req = NULL\n");
         mutex_unlock(&con->lock);
@@ -657,6 +683,10 @@ static void _on_willmsgreq(asymcute_con_t *con, const uint8_t *data, size_t len)
     mutex_lock(&con->lock);
 
     asymcute_req_t *req = _req_preprocess(con, len, MINLEN_WILLMSGREQ, NULL, 0);
+    /* if not use later by the application, releasing the request
+       as it should be done in the _req_preprocess function */
+    req->con = NULL;
+
     if (req == NULL) {
         DEBUG("_on_willmsgreq ERROR req = NULL\n");
         mutex_unlock(&con->lock);

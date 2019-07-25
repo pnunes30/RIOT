@@ -42,7 +42,6 @@
 #define SENSOR_FILE_ID           0x40
 #define SENSOR_FILE_SIZE         4
 
-
 /* Address Id is at most 8 bytes long (e.g. 16 hex chars) */
 static char addr_hex_string[ID_TYPE_UID_ID_LENGTH * 2 + 1];
 static char node_addr_string[ID_TYPE_UID_ID_LENGTH * 2 + 1];
@@ -691,12 +690,15 @@ static void _on_con_evt(asymcute_req_t *req, unsigned evt_type)
         case ASYMCUTE_REGISTERED:
             puts("\r\nTopic registered");
             if ((registration_status == 1) && (init_status == 1)){
-                if (req->con->pending == NULL) // list of registers is void
+                if (req->con->pending == NULL) // No request pending
                 {
+                    /* Releasing the request after using it */
+                    req->con = NULL;
                     mqtt_client_init(MQTT_SUBSCRIBING);
                     registration_status = 0;
                 }
             }
+            req->con = NULL; // Releasing the request
             break;
         case ASYMCUTE_PUBLISHED:
             puts("\r\nData was published");
