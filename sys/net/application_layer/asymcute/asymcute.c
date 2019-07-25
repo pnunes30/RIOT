@@ -874,7 +874,7 @@ end:
 void asymcute_handler_run(void)
 {
     thread_create(_stack, sizeof(_stack), ASYMCUTE_HANDLER_PRIO,
-                  0, _handler, NULL, "asymcute_main");
+                   THREAD_CREATE_STACKTEST, _handler, NULL, "asymcute_main");
 }
 
 int asymcute_topic_init(asymcute_topic_t *topic, const char *topic_name,
