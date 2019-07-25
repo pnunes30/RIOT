@@ -216,9 +216,9 @@ bool process_command_from_d7ap(uint8_t* payload, uint8_t len, d7ap_session_resul
 void command_completed(uint16_t trans_id, error_t error)
 {
     if (error)
-        printf("The request with transId <%d> has been transmitted with error %d\r\n", trans_id, error);
+        printf("The request with transId <%02x> has been transmitted with error %d\r\n", trans_id, error);
     else
-        printf("The request with transId <%d> has been transmitted successfully\r\n", trans_id);
+        printf("The request with transId <%02x> has been transmitted successfully\r\n", trans_id);
 }
 
 static void send_packet_over_d7a(char* payload, uint8_t len)
@@ -231,7 +231,7 @@ static void send_packet_over_d7a(char* payload, uint8_t len)
         return;
     }
 
-    printf("Request accepted with transaction Id %d:\n", trans_id);
+    printf("\nRequest accepted with transaction Id %02x:\n", trans_id);
 }
 
 void sensor_measurement(void *arg)
@@ -258,7 +258,7 @@ void sensor_measurement(void *arg)
     n = fmt_s16_dfp(hum_s, hum, -1);
     hum_s[n] = '\0';
 
-    printf("DHT values - temp: %s°C - relative humidity: %s%%\n",
+    printf("DHT values - temp: %sC - relative humidity: %s%%\n",
             temp_s, hum_s);
 
     uint32_t value= ((uint32_t)hum << 16) | (uint16_t)temp;
