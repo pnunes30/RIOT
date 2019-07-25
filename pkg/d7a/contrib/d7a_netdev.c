@@ -167,7 +167,8 @@ static void *_d7a_event_loop(void *arg) {
                 {
                     DEBUG("[D7A] MAC timer timeout\n");
                     timer_event* event = msg.content.ptr;
-                    event->cb(event->arg);
+                    if (event && event->cb)
+                        event->cb(event->arg);
                     break;
                 }
             case D7A_NETDEV_MSG_TYPE_EVENT:
