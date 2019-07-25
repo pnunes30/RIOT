@@ -203,7 +203,7 @@ void sx127x_init_radio_settings(sx127x_t *dev)
                                                        SX127X_RF_RXCONFIG_AGCAUTO_ON |
                                                        SX127X_RF_RXCONFIG_RXTRIGER_PREAMBLEDETECT);
 
-            sx127x_reg_write(dev, SX127X_REG_RSSICONFIG, 0x02); // TODO no RSSI offset for now + using 8 samples for smoothing
+            sx127x_reg_write(dev, SX127X_REG_RSSICONFIG, SX127X_RF_RSSICONFIG_SMOOTHING_8); // TODO no RSSI offset for now + using 8 samples for smoothing
             //  sx127x_reg_write(dev, SX127X_REG_RSSICOLLISION, 0); // TODO not used for now
             sx127x_reg_write(dev, SX127X_REG_RSSITHRESH, 0xFF); // TODO using -128 dBm for now
 
