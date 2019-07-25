@@ -29,6 +29,14 @@
 #define ENABLE_DEBUG (1)
 #include "debug.h"
 
+static void log_print_data(uint8_t* message, uint32_t length)
+{
+    for( uint32_t i=0 ; i<length ; i++ )
+    {
+        printf(" %02X", message[i]);
+    }
+}
+
 #define D7A_CLIENT_NOT_REGISTERED   0xFF
 #define D7A_MAX_ADDRESSEE_COUNT     (8)
 
@@ -118,6 +126,8 @@ static void response_callback(uint16_t trans_id, uint8_t* payload,uint8_t len, d
     }
 
     DEBUG("Forward response to the client\n");
+    log_print_data(payload, len);
+
 
     if (user_cb.callback)
         user_cb.callback(user_cb.arg, payload, len, (d7a_address *)result.addressee.id);
@@ -191,6 +201,7 @@ int d7a_unicast(const uint8_t* payload, uint8_t len, d7a_address* sendto)
     uint8_t expected_response_len = DEFAULT_RESP_LEN;
 
     DEBUG("D7A unicast\n");
+    log_print_data(payload, len);
 
     //sanity checks
     if (d7a_instance == D7A_CLIENT_NOT_REGISTERED)
