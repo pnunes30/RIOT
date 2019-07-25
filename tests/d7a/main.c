@@ -71,7 +71,7 @@ static  uint32_t timeout = INTERVAL;
 
 xtimer_t dht_timer;
 bool send_dht_temp = true;
-bool send_dht_hum = false;
+bool send_dht_hum = true;
 
 #if defined(MODULE_DHT)
 dht_t dht_dev;
@@ -289,7 +289,28 @@ void sensor_measurement(void *arg)
     }
 
     if (send_dht_hum)
-        send_packet_over_d7a(hum_s, strlen(hum_s));
+    {
+#ifdef MODULE_ASYMCUTE
+        /* get request context */
+        asymcute_req_t *req = _get_req_ctx();
+        if (req == NULL) {
+            goto repeat;
+        }
+
+        /* publish data */
+        size_t len = strlen(hum_s);
+        if (asymcute_publish(&d7a_connection, req, &d7a_topic_hum, hum_s, len, MQTTSN_QOS_1) != ASYMCUTE_OK)
+        {
+            puts("error: unable to send PUBLISH message");
+            goto repeat;
+        }
+
+        printf("Request %p: issued (QoS 1)\n", (void *)req);
+#else
+        // send measurements over D7A
+        send_packet_over_d7a(temp_s, strlen(hum_s));
+#endif
+    }
 
 repeat:
     /* periodically read temp and humidity values */
