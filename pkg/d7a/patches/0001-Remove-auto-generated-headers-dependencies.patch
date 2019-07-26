@@ -1,7 +1,7 @@
-From 70229cec75529d4e89701fdd477c089a001c3c7e Mon Sep 17 00:00:00 2001
+From 70bfe221df54c3f9156954b5ea493e33fb72c14a Mon Sep 17 00:00:00 2001
 From: Philippe Nunes <philippe.nunes@cortus.com>
 Date: Wed, 1 Aug 2018 12:56:09 +0200
-Subject: [PATCH 1/5] Remove auto generated headers dependencies
+Subject: [PATCH 1/9] Remove auto generated headers dependencies
 
 To build only the D7A module, we need to remove in the D7A module and
 in the framework headers all the includes of headers generated during the
@@ -15,13 +15,14 @@ in the framework implementation files.
  stack/framework/inc/console.h                            | 1 -
  stack/framework/inc/dae.h                                | 5 ++++-
  stack/framework/inc/debug.h                              | 1 -
+ stack/framework/inc/fs.h                                 | 2 --
  stack/framework/inc/log.h                                | 1 -
  stack/framework/inc/shell.h                              | 2 --
- stack/framework/inc/timer.h                              | 6 +++++-
+ stack/framework/inc/timer.h                              | 2 +-
  stack/modules/d7ap/d7ap_fs_data.c                        | 1 -
  stack/modules/d7ap/d7ap_stack.c                          | 2 --
  stack/modules/d7ap/phy.h                                 | 2 --
- 12 files changed, 9 insertions(+), 17 deletions(-)
+ 13 files changed, 5 insertions(+), 19 deletions(-)
 
 diff --git a/stack/framework/hal/chips/netdev_driver/inc/net/netopt.h b/stack/framework/hal/chips/netdev_driver/inc/net/netopt.h
 index a1aa025..29934b5 100644
@@ -49,7 +50,7 @@ index e37915c..351c39d 100644
  #if PLATFORM_NUM_DEBUGPINS > 0
      #define DEBUG_PIN_SET(pin) hw_debug_set(pin)
 diff --git a/stack/framework/hal/inc/hwradio.h b/stack/framework/hal/inc/hwradio.h
-index 8262179..19b93d4 100644
+index 2ee4244..0fb91c0 100644
 --- a/stack/framework/hal/inc/hwradio.h
 +++ b/stack/framework/hal/inc/hwradio.h
 @@ -33,9 +33,7 @@
@@ -63,7 +64,7 @@ index 8262179..19b93d4 100644
  #define HW_RSSI_INVALID 0x7FFF
  
 diff --git a/stack/framework/inc/console.h b/stack/framework/inc/console.h
-index 3dad582..0479273 100644
+index 894a82f..9b39153 100644
 --- a/stack/framework/inc/console.h
 +++ b/stack/framework/inc/console.h
 @@ -9,7 +9,6 @@
@@ -109,6 +110,19 @@ index f89dfcd..09bce1a 100644
  #include "assert.h" // start from assert.h which defines __ASSERT_FUNCT and then redefine assert
  #include "hwsystem.h"
  #include <stdio.h>
+diff --git a/stack/framework/inc/fs.h b/stack/framework/inc/fs.h
+index d75d7f9..6ea87c8 100644
+--- a/stack/framework/inc/fs.h
++++ b/stack/framework/inc/fs.h
+@@ -31,8 +31,6 @@
+ #include <stdint.h>
+ #include <stdbool.h>
+ 
+-#include "framework_defs.h"
+-
+ #ifndef FRAMEWORK_FS_FILE_COUNT
+ #define FRAMEWORK_FS_FILE_COUNT 70
+ #endif
 diff --git a/stack/framework/inc/log.h b/stack/framework/inc/log.h
 index af8d388..92e6b86 100644
 --- a/stack/framework/inc/log.h
@@ -135,7 +149,7 @@ index 02c3320..6f6eba9 100644
  
  #include "link_c.h"
 diff --git a/stack/framework/inc/timer.h b/stack/framework/inc/timer.h
-index a8a6797..59ca1ec 100644
+index a8a6797..5a47045 100644
 --- a/stack/framework/inc/timer.h
 +++ b/stack/framework/inc/timer.h
 @@ -49,7 +49,6 @@
@@ -146,20 +160,16 @@ index a8a6797..59ca1ec 100644
  
  #ifndef FRAMEWORK_TIMER_RESOLUTION
  #define FRAMEWORK_TIMER_RESOLUTION 1MS
-@@ -68,6 +67,11 @@ typedef struct
+@@ -68,6 +67,7 @@ typedef struct
  //a bit of dirty macro evaluation to prepend HWTIMER_FREQ_ to the value of 'FRAMEWORK_TIMER_RESOLUTION'
  #define ___CONCAT2(a,b) a ## b
  #define ___CONCAT(a, b) ___CONCAT2(a,b)
-+
-+#ifndef FRAMEWORK_TIMER_RESOLUTION
-+#define FRAMEWORK_TIMER_RESOLUTION 1MS
-+#endif
 +
  /*! \brief The frequency of the hardware timer used to power the framework timer
   *
   * This value can be configured by setting the 'FRAMEWORK_TIMER_RESOLUTION' CMake property
 diff --git a/stack/modules/d7ap/d7ap_fs_data.c b/stack/modules/d7ap/d7ap_fs_data.c
-index d12a561..bb35f91 100644
+index 506c4a5..4c6c7dc 100644
 --- a/stack/modules/d7ap/d7ap_fs_data.c
 +++ b/stack/modules/d7ap/d7ap_fs_data.c
 @@ -20,7 +20,6 @@
@@ -171,7 +181,7 @@ index d12a561..bb35f91 100644
  
  #ifdef MODULE_D7AP_USE_DEFAULT_SYSTEMFILES
 diff --git a/stack/modules/d7ap/d7ap_stack.c b/stack/modules/d7ap/d7ap_stack.c
-index 42ba352..d538244 100644
+index 194240f..a2d7ff6 100644
 --- a/stack/modules/d7ap/d7ap_stack.c
 +++ b/stack/modules/d7ap/d7ap_stack.c
 @@ -19,8 +19,6 @@
@@ -184,7 +194,7 @@ index 42ba352..d538244 100644
  #include "errors.h"
  #include "debug.h"
 diff --git a/stack/modules/d7ap/phy.h b/stack/modules/d7ap/phy.h
-index d92dd56..dbfc872 100644
+index 308b65d..f102e59 100644
 --- a/stack/modules/d7ap/phy.h
 +++ b/stack/modules/d7ap/phy.h
 @@ -32,10 +32,8 @@

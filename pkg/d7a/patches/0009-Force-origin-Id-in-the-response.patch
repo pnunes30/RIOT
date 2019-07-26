@@ -1,0 +1,47 @@
+From bc4f1af38315e3909ea9388b2beda3b0dedbdaef Mon Sep 17 00:00:00 2001
+From: Matthieu Saignemorte <matthieu.saignemorte@cortus.com>
+Date: Fri, 26 Jul 2019 14:52:35 +0200
+Subject: [PATCH 9/9] Force origin Id in the response
+
+---
+ stack/modules/d7ap/d7anp.c | 2 ++
+ stack/modules/d7ap/d7atp.c | 3 ++-
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/stack/modules/d7ap/d7anp.c b/stack/modules/d7ap/d7anp.c
+index 6d8e211..dde4693 100644
+--- a/stack/modules/d7ap/d7anp.c
++++ b/stack/modules/d7ap/d7anp.c
+@@ -643,6 +643,8 @@ bool d7anp_disassemble_packet_header(packet_t* packet, uint8_t *data_idx)
+         {
+             uint8_t origin_access_id_size = packet->d7anp_ctrl.origin_id_type == ID_TYPE_VID? 2 : 8;
+             memcpy(packet->origin_access_id, packet->hw_radio_packet.data + (*data_idx), origin_access_id_size); (*data_idx) += origin_access_id_size;
++            DPRINT("Origin access Id");
++            DPRINT_DATA(packet->origin_access_id, origin_access_id_size);
+         }
+         else if (packet->d7anp_ctrl.origin_id_type == ID_TYPE_NBID)
+         {
+diff --git a/stack/modules/d7ap/d7atp.c b/stack/modules/d7ap/d7atp.c
+index e28c501..086e787 100644
+--- a/stack/modules/d7ap/d7atp.c
++++ b/stack/modules/d7ap/d7atp.c
+@@ -277,6 +277,7 @@ void d7atp_init()
+     current_dialog_id = 0;
+     current_Tl_received = 0;
+     stop_dialog_after_tx = false;
++
+     timer_init_event(&d7atp_response_period_expired_timer, &response_period_timeout_handler);
+     timer_init_event(&d7atp_execution_delay_expired_timer, &execution_delay_timeout_handler);
+ }
+@@ -388,7 +389,7 @@ error_t d7atp_send_response(packet_t* packet)
+     d7atp->ctrl_ack_not_void = false; // TODO
+     d7atp->ctrl_ack_record = false; // TODO validate
+ 
+-    bool should_include_origin_template = false; // we don't need to send origin ID, the requester will filter based on dialogID, but ...
++    bool should_include_origin_template = true; // we don't need to send origin ID, the requester will filter based on dialogID, but ...
+ 
+     if (ID_TYPE_IS_BROADCAST(packet->dll_header.control_target_id_type))
+         packet->type = RESPONSE_TO_BROADCAST;
+-- 
+2.7.4
+

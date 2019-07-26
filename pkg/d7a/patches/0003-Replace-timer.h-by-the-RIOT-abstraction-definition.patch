@@ -1,7 +1,7 @@
-From dc24a5664f0635a07b289e65c39c7090b8b01af9 Mon Sep 17 00:00:00 2001
+From 6db7ba4bdd9c67fb5ca2b150ecc7ff498e0f1773 Mon Sep 17 00:00:00 2001
 From: Philippe Nunes <philippe.nunes@cortus.com>
 Date: Wed, 8 Aug 2018 19:24:35 +0200
-Subject: [PATCH 3/5] Replace timer.h by the RIOT abstraction definition
+Subject: [PATCH 3/9] Replace timer.h by the RIOT abstraction definition
 
 ---
  stack/framework/hal/inc/hwradio.h | 2 +-
@@ -13,7 +13,7 @@ Subject: [PATCH 3/5] Replace timer.h by the RIOT abstraction definition
  6 files changed, 6 insertions(+), 6 deletions(-)
 
 diff --git a/stack/framework/hal/inc/hwradio.h b/stack/framework/hal/inc/hwradio.h
-index 19b93d4..7551d0b 100644
+index 0fb91c0..27a4743 100644
 --- a/stack/framework/hal/inc/hwradio.h
 +++ b/stack/framework/hal/inc/hwradio.h
 @@ -33,7 +33,7 @@
@@ -26,7 +26,7 @@ index 19b93d4..7551d0b 100644
  #define HW_RSSI_INVALID 0x7FFF
  
 diff --git a/stack/modules/d7ap/d7anp.c b/stack/modules/d7ap/d7anp.c
-index e2d41f3..1e1b23c 100644
+index 199a50a..ff0afbf 100644
 --- a/stack/modules/d7ap/d7anp.c
 +++ b/stack/modules/d7ap/d7anp.c
 @@ -30,7 +30,7 @@
@@ -39,7 +39,7 @@ index e2d41f3..1e1b23c 100644
  #if defined(FRAMEWORK_LOG_ENABLED) && defined(MODULE_D7AP_NP_LOG_ENABLED)
  #define DPRINT(...) log_print_stack_string(LOG_STACK_NWL, __VA_ARGS__)
 diff --git a/stack/modules/d7ap/d7anp.h b/stack/modules/d7ap/d7anp.h
-index dc6042a..7078e61 100644
+index fec921b..4745e02 100644
 --- a/stack/modules/d7ap/d7anp.h
 +++ b/stack/modules/d7ap/d7anp.h
 @@ -35,7 +35,7 @@
@@ -52,7 +52,7 @@ index dc6042a..7078e61 100644
  
  typedef struct packet packet_t;
 diff --git a/stack/modules/d7ap/dll.c b/stack/modules/d7ap/dll.c
-index 2f48574..b3bf19c 100644
+index 777c9ac..4a3d3d7 100644
 --- a/stack/modules/d7ap/dll.c
 +++ b/stack/modules/d7ap/dll.c
 @@ -26,7 +26,7 @@
@@ -65,7 +65,7 @@ index 2f48574..b3bf19c 100644
  
  #include "phy.h"
 diff --git a/stack/modules/d7ap/phy.c b/stack/modules/d7ap/phy.c
-index 544641a..2135ae8 100644
+index 83327e2..c2b2d58 100644
 --- a/stack/modules/d7ap/phy.c
 +++ b/stack/modules/d7ap/phy.c
 @@ -29,7 +29,7 @@
@@ -78,7 +78,7 @@ index 544641a..2135ae8 100644
  #include "hwradio.h"
  #include "hwdebug.h"
 diff --git a/stack/modules/d7ap/phy.h b/stack/modules/d7ap/phy.h
-index dbfc872..ffeebe2 100644
+index f102e59..034ca75 100644
 --- a/stack/modules/d7ap/phy.h
 +++ b/stack/modules/d7ap/phy.h
 @@ -32,7 +32,7 @@
