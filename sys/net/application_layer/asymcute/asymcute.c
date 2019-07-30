@@ -37,7 +37,6 @@
 #define PROTOCOL_VERSION        (0x01)
 
 #define RETRY_TO                (ASYMCUTE_T_RETRY * US_PER_SEC)
-#define RETRY_SEARCH_GW_TO      (ASYMCUTE_T_RETRY * 2 * US_PER_SEC)
 #define KEEPALIVE_TO            (ASYMCUTE_KEEPALIVE_PING * US_PER_SEC)
 
 #define VALID_PUBLISH_FLAGS     (MQTTSN_QOS_1 | MQTTSN_DUP | MQTTSN_RETAIN)
@@ -215,11 +214,7 @@ static void _compile_sub_unsub(asymcute_req_t *req, asymcute_con_t *con,
 
 static void _req_resend(asymcute_req_t *req, asymcute_con_t *con)
 {
-    if ((con->state == SEARCHING_GW) || (con->state == CONNECTING))
-        event_timeout_set(&req->to_timer, RETRY_SEARCH_GW_TO);
-    else
-        event_timeout_set(&req->to_timer, RETRY_TO);
-
+    event_timeout_set(&req->to_timer, RETRY_TO);
     if (req->broadcast)
         send_broadcast(con, req->data, req->data_len);
     else
@@ -318,7 +313,7 @@ static unsigned _on_con_timeout(asymcute_con_t *con, asymcute_req_t *req)
 {
     (void)req;
 
-    if ((con->state == SEARCHING_GW) || (con->state == CONNECTING))
+    if(con->state == SEARCHING_GW)
     {
         // unlock the next request containing the connect message
         mutex_unlock(&req->next->lock);
@@ -778,6 +773,8 @@ static void msg_handler(void *arg)
             break;
     }
 }
+
+
 
 #if defined(MODULE_D7A) && !defined(MODULE_GNRC_SOCK_UDP)
 static void _on_data(void *arg, uint8_t *pkt, uint8_t pkt_len, d7a_address *remote)
