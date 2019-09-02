@@ -67,7 +67,7 @@ git-download:
 	echo !stack/framework/CMakeLists.txt >> $(PKG_BUILDDIR)/.git/info/sparse-checkout
 	echo !stack/framework/components >> $(PKG_BUILDDIR)/.git/info/sparse-checkout
 	echo !stack/framework/framework_bootstrap.c >> $(PKG_BUILDDIR)/.git/info/sparse-checkout
-	git -C $(PKG_BUILDDIR) pull origin master
+	git -C $(PKG_BUILDDIR) pull origin multi_session
 	git -C $(PKG_BUILDDIR) am $(GITAMFLAGS) "$(PKG_DIR)"/patches/*.patch
 	touch $@
 
