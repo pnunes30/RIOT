@@ -1,8 +1,3 @@
-## the cpu to build for
-export CPU = cortus_aps
-export MCPU = aps3r
-export CPU_MODEL = ciot25
-
 # flasher configuration
 
 

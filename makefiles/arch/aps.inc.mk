@@ -41,10 +41,10 @@ endif
 
 
 # export compiler flags
-export CFLAGS += $(CFLAGS_CPU) $(CFLAGS_LINK) $(CFLAGS_DBG) $(CFLAGS_OPT)
-export CFLAGS += -Wall -MMD -MP -fmessage-length=0
+CFLAGS += $(CFLAGS_CPU) $(CFLAGS_LINK) $(CFLAGS_DBG) $(CFLAGS_OPT)
+CFLAGS += -Wall -MMD -MP -fmessage-length=0
 # export assembly flags
-export ASFLAGS += $(CFLAGS_CPU) $(CFLAGS_DBG)
+ASFLAGS += $(CFLAGS_CPU) $(CFLAGS_DBG)
 # export linker flags
 export LINKFLAGS += -L$(RIOTCPU)/$(CPU)/ldscripts
 #export LINKER_SCRIPT ?= $(CPU_MODEL).ld
