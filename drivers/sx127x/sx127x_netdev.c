@@ -489,8 +489,7 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
 
         case NETOPT_SYNCWORD:
             assert(max_len >= sizeof(uint8_t));
-            *((uint8_t*) val) = (uint8_t) sx127x_get_syncword(dev);
-            return sizeof(uint8_t);
+            return sx127x_get_syncword(dev, (uint8_t*)val, max_len);
 
         case NETOPT_RANDOM:
             assert(max_len >= sizeof(uint32_t));
@@ -717,7 +716,7 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
 
         case NETOPT_SYNCWORD:
             assert(len <= sizeof(uint8_t));
-            sx127x_set_syncword(dev, *((uint8_t*) val));
+            sx127x_set_syncword(dev, (uint8_t*)val, len);
             return sizeof(uint8_t);
 
         case NETOPT_IQ_INVERT:

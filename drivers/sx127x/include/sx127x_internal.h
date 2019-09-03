@@ -170,7 +170,6 @@ bool sx127x_is_fifo_empty(const sx127x_t *dev);
 void sx1276_rx_chain_calibration(sx127x_t *dev);
 #endif
 
-#ifdef _APS_OSS7_
 /* FIXME: declared here due to missing gpio_edge(rising|falling) interface. */
 /*        we probably need 2 isr variants instead of extending the gpio api
  *        to avoid gpio reconfiguration and missed irq due to latency... */
@@ -179,7 +178,6 @@ void sx127x_on_dio0_isr(void *arg);
 void sx127x_on_dio1_isr(void *arg);
 void sx127x_on_dio2_isr(void *arg);
 void sx127x_on_dio3_isr(void *arg);
-#endif
 
 #ifdef __cplusplus
 }
