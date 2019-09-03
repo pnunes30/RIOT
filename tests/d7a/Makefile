@@ -1,5 +1,8 @@
 APPLICATION = APPD7A
 
+ELFFILE ?= $(BINDIR)/$(APPLICATION).elf
+FLASHFILE ?= $(ELFFILE)
+
 # If no BOARD is found in the environment, use this default:
 BOARD ?= b-l072z-lrwan1
 

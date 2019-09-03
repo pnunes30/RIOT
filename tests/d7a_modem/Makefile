@@ -1,5 +1,8 @@
 APPLICATION = APPD7A_MODEM
 
+ELFFILE ?= $(BINDIR)/$(APPLICATION).elf
+FLASHFILE ?= $(ELFFILE)
+
 # If no BOARD is found in the environment, use this default:
 BOARD ?= cortus_fpga
 
