@@ -360,7 +360,7 @@ static void _on_keepalive_evt(void *arg)
         if (con->state == SLEEP)
         {
             size_t id_len = strlen(con->cli_id);
-            uint8_t ping[ASYMCUTE_ID_MAXLEN + 3];
+            uint8_t ping[MQTTSN_CLI_ID_MAXLEN + 3];
             ping[0] = (uint8_t)(id_len + 2);
             ping[1] = MQTTSN_PINGREQ;
             memcpy(&ping[2], con->cli_id, id_len);

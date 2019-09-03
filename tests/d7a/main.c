@@ -118,7 +118,7 @@ enum {
     MQTT_REJECTED               /**< request was rejected */
 };
 
-char cli_id[ASYMCUTE_ID_MAXLEN];
+char cli_id[MQTTSN_CLI_ID_MAXLEN];
 #define topic_prefix    "d7a"
 #define topic_status    "status"
 #define topic_temp      "temp"
