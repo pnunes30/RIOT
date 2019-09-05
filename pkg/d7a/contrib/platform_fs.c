@@ -225,14 +225,13 @@ int _fs_init_permanent_filesystem(fs_filesystem_t* permanent_filesystem)
     for(int file_id = 0; file_id < FRAMEWORK_FS_FILE_COUNT; file_id++)
     {
         mtd[FS_STORAGE_PERMANENT]->driver->read(mtd[FS_STORAGE_PERMANENT], (uint8_t*)&files[file_id],
-                                   _get_file_header_address(file_id), FS_FILE_HEADER_SIZE);
+                                                _get_file_header_address(file_id), FS_FILE_HEADER_SIZE);
         if(_is_file_defined(file_id))
         {
-            uint8_t *data = malloc(files[file_id].length);
+            uint8_t data[files[file_id].length];
 
             mtd[FS_STORAGE_PERMANENT]->driver->read(mtd[FS_STORAGE_PERMANENT], data, files[file_id].addr, files[file_id].length);
             _fs_create_file(file_id, files[file_id].storage, data, files[file_id].length);
-            free(data);
         }
     }
 
@@ -322,7 +321,7 @@ static int _fs_verify_magic(fs_storage_class_t storage_class, uint8_t* expected_
 
 #ifndef MODULE_VFS
     if (storage_class == FS_STORAGE_PERMANENT)
-     	permanent_data_offset += FS_MAGIC_NUMBER_SIZE;
+         permanent_data_offset += FS_MAGIC_NUMBER_SIZE;
      else
          volatile_data_offset += FS_MAGIC_NUMBER_SIZE;
 #endif

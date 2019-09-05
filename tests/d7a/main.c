@@ -30,6 +30,7 @@
 #include "net/gnrc.h"
 #endif
 
+#include "d7a.h"
 #include "d7ap.h"
 #include "d7ap_fs.h"
 
