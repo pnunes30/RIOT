@@ -71,7 +71,7 @@ const netdev_driver_t sx127x_driver = {
 
 xcvr_handle_t xcvr = { .sx127x.netdev.driver = &sx127x_driver};
 
-/*#if ENABLE_DEBUG
+#if ENABLE_DEBUG
 static void dump_register(sx127x_t *dev)
 {
 
@@ -88,7 +88,7 @@ static void dump_register(sx127x_t *dev)
 
     DEBUG("**********************************************************");
 }
-#endif*/
+#endif
 
 static int _send(netdev_t *netdev, const iolist_t *iolist)
 {
@@ -362,7 +362,11 @@ static int _init(netdev_t *netdev)
     sx127x->irq = 0;
     sx127x_radio_settings_t settings;
     settings.channel = SX127X_CHANNEL_DEFAULT;
+#ifdef MODULE_D7A
+    settings.modem = SX127X_MODEM_FSK;
+#else
     settings.modem = SX127X_MODEM_DEFAULT;
+#endif
     settings.state = SX127X_RF_IDLE;
 
     sx127x->settings = settings;
@@ -704,6 +708,11 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
             sx127x_set_preamble_length(dev, *((const uint16_t*) val));
             return sizeof(uint16_t);
 
+        case NETOPT_SYNCWORD:
+            assert(len <= sizeof(uint8_t));
+            sx127x_set_syncword(dev, (uint8_t*)val, len);
+            return sizeof(uint8_t);
+
         case NETOPT_PREAMBLE_POLARITY:
             assert(len <= sizeof(uint8_t));
             sx127x_set_preamble_polarity(dev, *((const uint8_t*) val));
@@ -712,11 +721,6 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
         case NETOPT_PREAMBLE_DETECT_ON:
             assert(len <= sizeof(uint8_t));
             sx127x_set_preamble_detect_on(dev, *((const uint8_t*) val));
-            return sizeof(uint8_t);
-
-        case NETOPT_SYNCWORD:
-            assert(len <= sizeof(uint8_t));
-            sx127x_set_syncword(dev, (uint8_t*)val, len);
             return sizeof(uint8_t);
 
         case NETOPT_IQ_INVERT:
