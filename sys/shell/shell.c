@@ -65,7 +65,7 @@ typedef enum
 } rx_state_t;
 
 #define HISTORY_MAX_SIZE    5
-#define MAX_COMMAND_SIZE    512
+#define MAX_COMMAND_SIZE    256
 static uint8_t history_latest_cmd = 0;
 static uint8_t history_top_index = 0;
 static uint8_t history_index = 0;
