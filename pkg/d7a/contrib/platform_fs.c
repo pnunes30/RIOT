@@ -87,7 +87,7 @@ static const vfs_mount_t* const d7a_fs[] = {
 #endif
 
 static uint32_t volatile_data_offset = 0;
-static uint32_t permanent_data_offset = FS_MAGIC_NUMBER_SIZE + FS_NUMBER_OF_FILES_SIZE + 256 * FS_FILE_HEADER_SIZE;
+static uint32_t permanent_data_offset = FS_FILES_DATA_OFFSET;
 
 #if !defined(MTD_0)
 extern mtd_dev_t * const mtd0;
@@ -103,12 +103,11 @@ static mtd_dev_t* mtd[FS_STORAGE_CLASS_NUMOF];
 
 /* forward internal declarations */
 #ifdef MODULE_VFS
-//static const char * _file_mount_point(uint8_t file_id, const fs_file_header_t* file_header);
 static int _get_file_name(char* file_name, uint8_t file_id);
 static int _create_file_name(char* file_name, uint8_t file_id, fs_storage_class_t storage_class);
 #endif
 
-static int _fs_init_permanent_filesystem(fs_filesystem_t* permanent_filesystem);
+static int _fs_init_permanent_systemfiles(fs_filesystem_t* permanent_systemfiles);
 static int _fs_create_magic(fs_storage_class_t storage_class);
 static int _fs_verify_magic(fs_storage_class_t storage_class, uint8_t* magic_number);
 static int _fs_create_file(uint8_t file_id, fs_storage_class_t storage_class, const uint8_t* initial_data, uint32_t length);
@@ -123,15 +122,15 @@ static void log_print_data(uint8_t* message, uint32_t length)
 }
 #endif
 
-static inline uint32_t _get_file_header_address(uint8_t file_id)
-{
-    return FS_FILE_HEADERS_ADDRESS + (file_id * FS_FILE_HEADER_SIZE);
-}
-
 static inline bool _is_file_defined(uint8_t file_id)
 {
     //return files[file_id].storage == FS_STORAGE_INVALID;
     return files[file_id].length != 0;
+}
+
+static inline uint32_t _get_file_header_address(uint8_t file_id)
+{
+    return FS_FILE_HEADERS_ADDRESS + (file_id * FS_FILE_HEADER_SIZE);
 }
 
 void fs_init(fs_filesystem_t* provisioning)
@@ -173,13 +172,13 @@ void fs_init(fs_filesystem_t* provisioning)
 #endif
 
     if (provisioning)
-        _fs_init_permanent_filesystem(provisioning);
+        _fs_init_permanent_systemfiles(provisioning);
 
     is_fs_init_completed = true;
     DPRINT("fs_init OK");
 }
 
-int _fs_init_permanent_filesystem(fs_filesystem_t* permanent_filesystem)
+int _fs_init_permanent_systemfiles(fs_filesystem_t* permanent_systemfiles)
 {
     uint8_t expected_magic_number[FS_MAGIC_NUMBER_SIZE] = FS_MAGIC_NUMBER;
     if (_fs_verify_magic(FS_STORAGE_PERMANENT, expected_magic_number) < 0)
@@ -189,23 +188,23 @@ int _fs_init_permanent_filesystem(fs_filesystem_t* permanent_filesystem)
 #ifdef MODULE_VFS
 
 #if (FORCE_REFORMAT == 1)
-        DPRINT("init_permanent_filesystem: force format\n");
+        DPRINT("init_permanent_systemfiles: force format\n");
         int res;
         if ((res = vfs_umount((vfs_mount_t*)d7a_fs[FS_STORAGE_PERMANENT])) != 0)
         {
-            DPRINT("init_permanent_filesystem: Oops, umount failed (%d)", res);
+            DPRINT("init_permanent_systemfiles: Oops, umount failed (%d)", res);
         }
         if ((res = vfs_format((vfs_mount_t*)d7a_fs[FS_STORAGE_PERMANENT])) != 0)
         {
-            DPRINT("init_permanent_filesystem: Oops, format failed (%d)", res);
+            DPRINT("init_permanent_systemfiles: Oops, format failed (%d)", res);
             return res;
         }
         if ((res = vfs_mount((vfs_mount_t*)d7a_fs[FS_STORAGE_PERMANENT]))!=0)
         {
-            DPRINT("init_permanent_filesystem: Oops, remount failed (%d)",res);
+            DPRINT("init_permanent_systemfiles: Oops, remount failed (%d)",res);
             return res;
         }
-        DPRINT("init_permanent_filesystem: force format complete");
+        DPRINT("init_permanent_systemfiles: force format complete");
 #endif
 
 #endif
@@ -214,7 +213,7 @@ int _fs_init_permanent_filesystem(fs_filesystem_t* permanent_filesystem)
    }
 
     DPRINT("metadata addr: %x", permanent_systemfiles->metadata);
-    DPRINT("metadata nfiles: %x", permanent_systemfiles->metadata->nfiles);
+    DPRINT("metadata nfiles: %x", permanent_systemfiles->metadata.nfiles);
     // initialise system file caching
     size_t number_of_files;
     mtd[FS_STORAGE_PERMANENT]->driver->read(mtd[FS_STORAGE_PERMANENT], (uint8_t*)&number_of_files, FS_NUMBER_OF_FILES_ADDRESS, FS_NUMBER_OF_FILES_SIZE);
@@ -222,7 +221,7 @@ int _fs_init_permanent_filesystem(fs_filesystem_t* permanent_filesystem)
 
     //TODO with a true file system, the provisioning should comply to this FS format
 
-    for(int file_id = 0; file_id < FRAMEWORK_FS_FILE_COUNT; file_id++)
+    for(int file_id = 0; file_id < number_of_files; file_id++)
     {
         mtd[FS_STORAGE_PERMANENT]->driver->read(mtd[FS_STORAGE_PERMANENT], (uint8_t*)&files[file_id],
                                                 _get_file_header_address(file_id), FS_FILE_HEADER_SIZE);
@@ -312,19 +311,7 @@ static int _fs_verify_magic(fs_storage_class_t storage_class, uint8_t* expected_
 #endif
 
     /* compare */
-    for (int i = 0; i < (int)FS_MAGIC_NUMBER_SIZE; i++) {
-        if (magic_number[i] != expected_magic_number[i]) {
-            DPRINT("Error magic[%d] incorrect (%d)", i, magic_number[i]);
-            return -EFAULT;
-        }
-    }
-
-#ifndef MODULE_VFS
-    if (storage_class == FS_STORAGE_PERMANENT)
-         permanent_data_offset += FS_MAGIC_NUMBER_SIZE;
-     else
-         volatile_data_offset += FS_MAGIC_NUMBER_SIZE;
-#endif
+    assert(memcmp(expected_magic_number, magic_number, FS_MAGIC_NUMBER_SIZE) == 0); // if not the FS on EEPROM is not compatible with the current code
 
     DPRINT("READ MAGIC NUMBER:");
     DPRINT_DATA(magic_number, FS_MAGIC_NUMBER_SIZE);
@@ -420,15 +407,21 @@ int _fs_create_file(uint8_t file_id, fs_storage_class_t storage_class, const uin
         mtd[storage_class]->driver->write(mtd[storage_class], initial_data, files[file_id].addr, length);
     }
     else{
-        uint8_t default_data[length];
-        memset(default_data, 0xff, length);
-        mtd[storage_class]->driver->write(mtd[storage_class], default_data, files[file_id].addr, length);
+        // do not use variable length array to limit stack usage, do in chunks instead
+        uint8_t default_data[64];
+        memset(default_data, 0xff, 64);
+        uint32_t remaining_length = length;
+        int i = 0;
+        while(remaining_length > 64) {
+          mtd[storage_class]->driver->write(mtd[storage_class], default_data, files[file_id].addr + (i * 64), 64);
+          remaining_length -= 64;
+          i++;
+        }
+
+        mtd[storage_class]->driver->write(mtd[storage_class], default_data, files[file_id].addr  + (i * 64), remaining_length);
     }
 #endif
 
-    // update file caching for stat lookup
-    files[file_id].storage = storage_class;
-    files[file_id].length = length;
     DPRINT("fs init file(file_id %d, storage %d, addr %lu, length %lu)",file_id, storage_class, files[file_id].addr, length);
     return 0;
 }
@@ -565,6 +558,14 @@ fs_file_stat_t *fs_file_stat(uint8_t file_id)
         return NULL;
 }
 
+bool fs_unregister_file_modified_callback(uint8_t file_id) {
+    if(file_modified_callbacks[file_id]) {
+        file_modified_callbacks[file_id] = NULL;
+        return true;
+    } else
+        return false;
+}
+
 bool fs_register_file_modified_callback(uint8_t file_id, fs_modified_file_callback_t callback)
 {
     assert(_is_file_defined(file_id));
@@ -575,4 +576,3 @@ bool fs_register_file_modified_callback(uint8_t file_id, fs_modified_file_callba
     file_modified_callbacks[file_id] = callback;
     return true;
 }
-
