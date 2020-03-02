@@ -105,6 +105,15 @@ SECTIONS
     . = ALIGN(4);
     _etext = .;
 
+    /* store D7AP FS in EEPROM */
+    .d7ap_fs_systemfiles :
+    {
+      . = ALIGN(4);
+      __d7ap_fs_systemfiles_start = .;
+      KEEP(*(.d7ap_fs_systemfiles))
+      __d7ap_fs_systemfiles_end = .;
+    } > EEPROM
+
     /* stack section */
     .stack (NOLOAD):
     {

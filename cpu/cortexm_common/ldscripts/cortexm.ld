@@ -26,6 +26,7 @@ MEMORY
 {
     rom (rx)    : ORIGIN = _rom_start_addr + _rom_offset, LENGTH = _fw_rom_length
     ram (w!rx)  : ORIGIN = _ram_start_addr,               LENGTH = _ram_length
+    EEPROM (r)  : ORIGIN = 0x08080000,                    LENGTH = 6K
 }
 
 INCLUDE cortexm_base.ld
