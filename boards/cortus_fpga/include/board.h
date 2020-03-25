@@ -137,10 +137,14 @@ extern "C" {
 /** mtd flash emulation device */
 extern mtd_dev_t * const mtd0;
 extern mtd_dev_t * const mtd1;
+extern mtd_dev_t * const mtd2;
+extern mtd_dev_t * const mtd_vfs;
 
 /** Default MTD device */
 #define MTD_0 mtd0
 #define MTD_1 mtd1
+#define MTD_2 mtd2
+#define MTD_VFS mtd_vfs
 
 #endif
 
@@ -177,6 +181,7 @@ extern blockdevice_t * const volatile_blockdevice;
 #endif /*MODULE_D7A*/
 /** @} */
 
+#define STDIO_UART_DEV       (UART_DEV(0))
 
 /**
  * @brief Initialize board specific hardware, including clock, LEDs and std-IO

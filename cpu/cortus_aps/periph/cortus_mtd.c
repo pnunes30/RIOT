@@ -29,6 +29,8 @@
 #include <errno.h>
 #include <string.h>
 
+#include "framework/inc/fs.h"
+
 #if defined(MODULE_MTD_SPI_NOR)
 # if !defined(USE_PERIPH_CORTUS_MTD_FPGA_M25P32)
 # error "MODULE_MTD_SPI_NOR requires explicit enable of FPGA M25P32"
@@ -138,7 +140,43 @@ static const mtd_desc_t cortus_mtd_driver = {
     .power = _power,
 };
 
+#define METADATA_SIZE (4 + 4 + (12 * FRAMEWORK_FS_FILE_COUNT))
+
+/*** Cortus FPGA only supports a simple RAM-based blockdevice ***/
+extern uint8_t d7ap_fs_metadata[METADATA_SIZE];
+extern uint8_t d7ap_files_data[FRAMEWORK_FS_PERMANENT_STORAGE_SIZE];
+extern uint8_t d7ap_volatile_files_data[FRAMEWORK_FS_VOLATILE_STORAGE_SIZE];
+
 mtd_dev_cortus_t cortus_mtd0_dev = {
+    .dev.driver = &cortus_mtd_driver,
+    .dev.sector_count = SECTOR_COUNT,
+    .dev.pages_per_sector = PAGE_PER_SECTOR,
+    .dev.page_size = PAGE_SIZE,
+    .size = sizeof(d7ap_fs_metadata),
+    .buffer = d7ap_fs_metadata
+};
+
+mtd_dev_cortus_t cortus_mtd1_dev = {
+    .dev.driver = &cortus_mtd_driver,
+    .dev.sector_count = SECTOR_COUNT,
+    .dev.pages_per_sector = PAGE_PER_SECTOR,
+    .dev.page_size = PAGE_SIZE,
+    .size = sizeof(d7ap_files_data),
+    .buffer = d7ap_files_data
+
+};
+
+mtd_dev_cortus_t cortus_mtd2_dev = {
+    .dev.driver = &cortus_mtd_driver,
+    .dev.sector_count = SECTOR_COUNT,
+    .dev.pages_per_sector = PAGE_PER_SECTOR,
+    .dev.page_size = PAGE_SIZE,
+    .size = sizeof(d7ap_volatile_files_data),
+    .buffer = d7ap_volatile_files_data
+
+};
+
+mtd_dev_cortus_t cortus_mtd_vfs_dev = {
     .dev.driver = &cortus_mtd_driver,
     .dev.sector_count = SECTOR_COUNT,
     .dev.pages_per_sector = PAGE_PER_SECTOR,
@@ -147,19 +185,11 @@ mtd_dev_cortus_t cortus_mtd0_dev = {
     .buffer = aps_dummy_mtd0
 };
 
-mtd_dev_cortus_t cortus_mtd1_dev = {
-    .dev.driver = &cortus_mtd_driver,
-    .dev.sector_count = SECTOR_COUNT,
-    .dev.pages_per_sector = PAGE_PER_SECTOR,
-    .dev.page_size = PAGE_SIZE,
-    .size = sizeof(aps_dummy_mtd1),
-    .buffer = aps_dummy_mtd1
-
-};
-
 #endif /*DUMMY|FPGA*/
 
 mtd_dev_t * const mtd0 = (mtd_dev_t* const) &cortus_mtd0_dev;
 mtd_dev_t * const mtd1 = (mtd_dev_t* const) &cortus_mtd1_dev;
+mtd_dev_t * const mtd2 = (mtd_dev_t* const) &cortus_mtd2_dev;
+mtd_dev_t * const mtd_vfs = (mtd_dev_t* const) &cortus_mtd_vfs_dev;
 
 #endif /*MODULE_MTD*/

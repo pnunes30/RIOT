@@ -26,6 +26,9 @@
 #include <errno.h>
 #include <string.h>
 
+#include "framework/inc/fs.h"
+#include "framework/inc/errors.h"
+
 
 #define ENABLE_DEBUG (0)
 
@@ -72,7 +75,7 @@ static int _init(mtd_dev_t *dev)
     (void)dev;
 
     // No memory erase. init is invoked before mount in little_fs.
-    return 0;
+    return SUCCESS;
 }
 
 static int _read(mtd_dev_t *dev, void *buff, uint32_t addr, uint32_t size)
@@ -82,7 +85,7 @@ static int _read(mtd_dev_t *dev, void *buff, uint32_t addr, uint32_t size)
     }
     memcpy(buff, ((mtd_dev_dummy_t *)dev)->buffer + addr, size);
 
-    return size;
+    return SUCCESS;
 }
 
 static int _write(mtd_dev_t *dev, const void *buff, uint32_t addr, uint32_t size)
@@ -95,7 +98,7 @@ static int _write(mtd_dev_t *dev, const void *buff, uint32_t addr, uint32_t size
     }
     memcpy(((mtd_dev_dummy_t *)dev)->buffer + addr, buff, size);
 
-    return size;
+    return SUCCESS;
 }
 
 static int _erase(mtd_dev_t *dev, uint32_t addr, uint32_t size)
@@ -111,7 +114,7 @@ static int _erase(mtd_dev_t *dev, uint32_t addr, uint32_t size)
     }
     memset(((mtd_dev_dummy_t *)dev)->buffer + addr, 0xff, size);
 
-    return 0;
+    return SUCCESS;
 }
 
 static int _power(mtd_dev_t *dev, enum mtd_power_state power)
@@ -129,6 +132,13 @@ static const mtd_desc_t mtd_driver = {
     .power = _power,
 };
 
+#define METADATA_SIZE (4 + 4 + (12 * FRAMEWORK_FS_FILE_COUNT))
+
+/*** simple RAM-based blockdevice ***/
+extern uint8_t d7ap_fs_metadata[METADATA_SIZE];
+extern uint8_t d7ap_files_data[FRAMEWORK_FS_PERMANENT_STORAGE_SIZE];
+extern uint8_t d7ap_volatile_files_data[FRAMEWORK_FS_VOLATILE_STORAGE_SIZE];
+
 #if !defined(MTD0)
 static uint8_t dummy_mtd0[PAGE_PER_SECTOR * PAGE_SIZE * SECTOR_COUNT] __attribute__((section(".noinit")));
 
@@ -137,8 +147,8 @@ mtd_dev_dummy_t dummy_mtd0_dev = {
     .dev.sector_count = SECTOR_COUNT,
     .dev.pages_per_sector = PAGE_PER_SECTOR,
     .dev.page_size = PAGE_SIZE,
-    .size = sizeof(dummy_mtd0),
-    .buffer = dummy_mtd0
+    .size = sizeof(d7ap_fs_metadata),
+    .buffer = d7ap_fs_metadata
 };
 
 mtd_dev_t * const mtd0 = (mtd_dev_t* const) &dummy_mtd0_dev;
@@ -152,12 +162,26 @@ mtd_dev_dummy_t dummy_mtd1_dev = {
     .dev.sector_count = SECTOR_COUNT,
     .dev.pages_per_sector = PAGE_PER_SECTOR,
     .dev.page_size = PAGE_SIZE,
-    .size = sizeof(dummy_mtd1),
-    .buffer = dummy_mtd1
-
+    .size = sizeof(d7ap_files_data),
+    .buffer = d7ap_files_data
 };
 
 mtd_dev_t * const mtd1 = (mtd_dev_t* const) &dummy_mtd1_dev;
+#endif
+
+#if !defined(MTD2)
+static uint8_t dummy_mtd2[PAGE_PER_SECTOR * PAGE_SIZE * SECTOR_COUNT] __attribute__((section(".noinit")));
+
+mtd_dev_dummy_t dummy_mtd2_dev = {
+    .dev.driver = &mtd_driver,
+    .dev.sector_count = SECTOR_COUNT,
+    .dev.pages_per_sector = PAGE_PER_SECTOR,
+    .dev.page_size = PAGE_SIZE,
+    .size = sizeof(d7ap_volatile_files_data),
+    .buffer = d7ap_volatile_files_data
+};
+
+mtd_dev_t * const mtd2 = (mtd_dev_t* const) &dummy_mtd2_dev;
 #endif
 
 #endif /* !defined(MTD0) || !defined(MTD1) */
