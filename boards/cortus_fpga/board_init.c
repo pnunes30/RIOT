@@ -26,7 +26,7 @@
 /*
  * @brief       default aps mtd0 filesystem
  */
-#if defined(MODULE_VFS) && defined (MTD_0)
+#if defined(MODULE_VFS) && defined (MTD_VFS)
 
 #if defined(MODULE_LITTLEFS)
 #include "fs/littlefs_fs.h"
@@ -69,7 +69,7 @@ vfs_mounttab_t aps_mtd0_mount = {
     .mount_point    = "/mtd0",
     .private_data   = &default_fs_desc,
 };
-#define aps_fs_init() { default_fs_desc.dev = MTD_0; }
+#define aps_fs_init() { default_fs_desc.dev = MTD_VFS; }
 #endif
 
 #endif /*defined(MODULE_VFS) && defined(MTD_0)*/
