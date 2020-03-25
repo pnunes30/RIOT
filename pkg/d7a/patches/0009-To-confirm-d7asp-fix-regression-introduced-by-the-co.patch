@@ -1,0 +1,27 @@
+From 7ac04b455301b546c2bfa4fe42ba0c97f3970de5 Mon Sep 17 00:00:00 2001
+From: Philippe Nunes <philippe.nunes@cortus.com>
+Date: Thu, 25 Jul 2019 19:31:27 +0200
+Subject: [PATCH 9/9] [To confirm] d7asp: fix regression introduced by the
+ commit f95d894
+
+Transport layer needs to be informed that the transaction is terminated.
+---
+ stack/modules/d7ap/d7asp.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/stack/modules/d7ap/d7asp.c b/stack/modules/d7ap/d7asp.c
+index 765467c..4616730 100644
+--- a/stack/modules/d7ap/d7asp.c
++++ b/stack/modules/d7ap/d7asp.c
+@@ -605,7 +605,7 @@ void d7asp_process_received_response(packet_t* packet, bool extension)
+         current_request_id = NO_ACTIVE_REQUEST_ID;
+         schedule_current_session(); // continue flushing until all request handled ...
+         // stop the current transaction
+-        // d7atp_stop_transaction(); //TO BE CHECKED THAT COMMENTING THIS OUT HAS NO NEGATIVE EFFECT
++        d7atp_stop_transaction(); //TO BE CHECKED THAT COMMENTING THIS OUT HAS NO NEGATIVE EFFECT
+     }
+     // switch to the state slave when the D7ATP Dialog Extension Procedure is initiated and all request are handled
+     else if ((extension) && (current_request_id == current_master_session.next_request_id - 1))
+-- 
+2.7.4
+

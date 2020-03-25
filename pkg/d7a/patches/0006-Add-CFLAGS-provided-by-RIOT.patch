@@ -1,0 +1,25 @@
+From 55b7953ca73b501cd45de13fd76a271a08046aba Mon Sep 17 00:00:00 2001
+From: Philippe Nunes <philippe.nunes@cortus.com>
+Date: Wed, 19 Jun 2019 10:04:05 +0200
+Subject: [PATCH 06/11] Add CFLAGS provided by RIOT
+
+---
+ stack/CMakeLists.txt | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/stack/CMakeLists.txt b/stack/CMakeLists.txt
+index 9c06190..cd27099 100644
+--- a/stack/CMakeLists.txt
++++ b/stack/CMakeLists.txt
+@@ -64,6 +64,8 @@ ENDIF()
+ EXPORT_GLOBAL_INCLUDE_DIRECTORIES(framework/inc)
+ EXPORT_GLOBAL_INCLUDE_DIRECTORIES(framework/hal/inc)
+ 
++INSERT_C_FLAGS(AFTER "${EXTERNAL_C_FLAGS}")
++
+ SET(MODULE_D7AP ON CACHE BOOL "") # D7AP module enabled by default
+ SET(MODULE_D7AP_FS ON CACHE BOOL "")  # D7AP_FS module enabled by default
+ #SET(MODULE_ALP ON CACHE BOOL "")  # ALP module enabled by default
+-- 
+2.7.4
+

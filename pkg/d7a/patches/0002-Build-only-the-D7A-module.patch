@@ -1,14 +1,14 @@
-From e0848fe95fe8eeaa34908b55b0ef0cd4bab8082f Mon Sep 17 00:00:00 2001
+From ac453e7f22e7b99f319adffd5bb4b6b7ff6c9572 Mon Sep 17 00:00:00 2001
 From: Philippe Nunes <philippe.nunes@cortus.com>
 Date: Fri, 3 Aug 2018 10:37:40 +0200
-Subject: [PATCH 2/9] Build only the D7A module
+Subject: [PATCH 02/11] Build only the D7A module
 
 ---
- stack/CMakeLists.txt | 22 ++++------------------
- 1 file changed, 4 insertions(+), 18 deletions(-)
+ stack/CMakeLists.txt | 23 ++++-------------------
+ 1 file changed, 4 insertions(+), 19 deletions(-)
 
 diff --git a/stack/CMakeLists.txt b/stack/CMakeLists.txt
-index 3090445..ada20a0 100644
+index f841ca5..9c06190 100644
 --- a/stack/CMakeLists.txt
 +++ b/stack/CMakeLists.txt
 @@ -54,19 +54,6 @@ INSERT_C_FLAGS(BEFORE -std=gnu99 -fno-common)
@@ -31,16 +31,17 @@ index 3090445..ada20a0 100644
  #Load the file with platform-specific build commands
  IF(EXISTS "${PROJECT_SOURCE_DIR}/cmake/platform_${PLATFORM}_macros.cmake")
      include ("cmake/platform_${PLATFORM}_macros.cmake")
-@@ -74,12 +61,11 @@ ELSE()
+@@ -74,14 +61,12 @@ ELSE()
      include ("cmake/platform_default_macros.cmake")
  ENDIF()
  
 +EXPORT_GLOBAL_INCLUDE_DIRECTORIES(framework/inc)
 +EXPORT_GLOBAL_INCLUDE_DIRECTORIES(framework/hal/inc)
 +
- SET(MODULE_D7AP true CACHE BOOLEAN "") # D7AP module enabled by default
--SET(MODULE_ALP true CACHE BOOLEAN "")  # ALP module enabled by default
-+#SET(MODULE_ALP true CACHE BOOLEAN "")  # ALP module enabled by default
+ SET(MODULE_D7AP ON CACHE BOOL "") # D7AP module enabled by default
+ SET(MODULE_D7AP_FS ON CACHE BOOL "")  # D7AP_FS module enabled by default
+-SET(MODULE_ALP ON CACHE BOOL "")  # ALP module enabled by default
++#SET(MODULE_ALP ON CACHE BOOL "")  # ALP module enabled by default
  
  #Then load the modules
  ADD_SUBDIRECTORY("modules")
@@ -48,6 +49,7 @@ index 3090445..ada20a0 100644
 -ADD_SUBDIRECTORY("apps")
 -#And tests
 -ADD_SUBDIRECTORY("tests")
+-
 -- 
 2.7.4
 
