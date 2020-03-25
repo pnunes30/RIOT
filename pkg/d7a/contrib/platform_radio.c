@@ -94,7 +94,19 @@ void hw_radio_set_tx_fdev(uint32_t fdev)
 
 void hw_radio_set_preamble_size(uint16_t size)
 {
-    netdev->driver->set(netdev, NETOPT_PREAMBLE_LENGTH, &size, sizeof(uint16_t));
+    netdev->driver->set(netdev, NETOPT_PREAMBLE_LENGTH, &size, sizeof(uint8_t));
+}
+
+void hw_radio_set_preamble_detector(uint8_t preamble_detector_size, uint8_t preamble_tol)
+{
+    netdev->driver->set(netdev, NETOPT_PREAMBLE_DETECT_SIZE, &preamble_detector_size, sizeof(uint8_t));
+    netdev->driver->set(netdev, NETOPT_PREAMBLE_DETECT_TOLERANCE, &preamble_tol, sizeof(uint8_t));
+}
+
+void hw_radio_set_rssi_config(uint8_t rssi_smoothing, uint8_t rssi_offset)
+{
+    netdev->driver->set(netdev, NETOPT_RSSI_SMOOTHING, &rssi_smoothing, sizeof(uint8_t));
+    netdev->driver->set(netdev, NETOPT_RSSI_OFFSET, &rssi_offset, sizeof(uint8_t));
 }
 
 /* TODO Make use of the following APIs to setup the xcvr */
