@@ -1,0 +1,2 @@
+$RIOT_HOME/dist/tools/pyterm/pyterm -p /dev/ttyUSB1 -b 115200 -rn pyterm1.log
+

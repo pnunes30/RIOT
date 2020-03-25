@@ -1,0 +1,1 @@
+sudo ~/dev/d7/sw/riot/dist/tools/pyterm/pyterm -p /dev/ttyUSB1 -b 115200
