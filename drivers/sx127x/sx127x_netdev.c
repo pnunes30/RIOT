@@ -69,7 +69,7 @@ const netdev_driver_t sx127x_driver = {
     .set = _set,
 };
 
-xcvr_handle_t xcvr = { .sx127x.netdev.driver = &sx127x_driver};
+xcvr_handle_t xcvr_ressource = { .sx127x.netdev.driver = &sx127x_driver};
 
 #if ENABLE_DEBUG
 static void dump_register(sx127x_t *dev)

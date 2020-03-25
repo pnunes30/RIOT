@@ -164,7 +164,7 @@ void d7a_init(void)
     //FIXME init random for the D7A stack?
 
     /* setup netdev modules */
-    netdev_t *netdev = (netdev_t*) &xcvr;
+    netdev_t *netdev = (netdev_t*) &xcvr_ressource;
 
     // Create the thread for the D7A MAC layer
     d7a_netdev_init(d7a_thread_stack, sizeof(d7a_thread_stack), THREAD_PRIORITY_MAIN - 5, "d7a", netdev);

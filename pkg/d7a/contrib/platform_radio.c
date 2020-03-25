@@ -312,7 +312,7 @@ error_t hw_radio_init(hwradio_init_args_t* init_args)
     tx_packet_callback = init_args->tx_packet_cb;
     tx_refill_callback = init_args->tx_refill_cb;
 
-    netdev = (netdev_t*) &xcvr; // xcvr should be declared in RADIO_CHIP_netdev.c
+    netdev = (netdev_t*) &xcvr_ressource; // xcvr should be declared in RADIO_CHIP_netdev.c
     ret = netdev->driver->init(netdev); // done also in gnrc_netif
 
     netdev->event_callback = _event_cb;
