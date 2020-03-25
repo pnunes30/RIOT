@@ -12,6 +12,7 @@ RIOTBASE ?= $(CURDIR)/../..
 QUIET ?= 0 #1
 
 USEPKG += d7a
+USEMODULE += d7a_fs
 USEMODULE += d7a_contrib
 USEMODULE += xtimer
 
