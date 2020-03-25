@@ -1,0 +1,12 @@
+## Put defined MCU peripherals here (in alphabetical order)
+## -jmhe-moved to cpu.
+
+## the cpu to build for
+export CPU = cortus_aps
+export MCPU = aps25
+export CPU_MODEL = ciot25
+
+# The board MPU family (used for grouping by the CI system)
+FEATURES_MCU_GROUP = cortus_aps
+
+-include $(RIOTCPU)/cortus_aps/Makefile.features
