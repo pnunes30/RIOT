@@ -481,7 +481,7 @@ typedef struct xcvr_handle xcvr_handle_t;
 /**
  * @brief   Reference to the transceiver handle struct
  */
-extern xcvr_handle_t xcvr;
+extern xcvr_handle_t xcvr_ressource;
 
 #ifdef __cplusplus
 }
