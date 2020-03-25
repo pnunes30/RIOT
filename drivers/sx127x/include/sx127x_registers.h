@@ -830,6 +830,12 @@ extern "C" {
 #define SX127X_RF_PARAMP_LOWPNTXPLL_OFF                              (0x10)  /* Default */
 #define SX127X_RF_PARAMP_LOWPNTXPLL_ON                               (0x00)
 
+#define SX127X_RF_PARAMP_MODULATIONSHAPING_MASK                      (0x0F)
+#define SX127X_RF_PARAMP_MODULATIONSHAPING_00                        (0x00)  /* Default */
+#define SX127X_RF_PARAMP_MODULATIONSHAPING_01                        (0x20)
+#define SX127X_RF_PARAMP_MODULATIONSHAPING_10                        (0x40)
+#define SX127X_RF_PARAMP_MODULATIONSHAPING_11                        (0x60)
+
 #define SX127X_RF_PARAMP_MASK                                        (0xF0)
 #define SX127X_RF_PARAMP_3400_US                                     (0x00)
 #define SX127X_RF_PARAMP_2000_US                                     (0x01)

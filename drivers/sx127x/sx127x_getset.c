@@ -1413,25 +1413,25 @@ uint32_t sx127x_get_tx_fdev(const sx127x_t *dev)
 
 void sx127x_set_modulation_shaping(sx127x_t *dev, uint8_t shaping)
 {
-    sx127x_reg_write(dev, SX127X_REG_OPMODE,
-                     (sx127x_reg_read(dev, SX127X_REG_OPMODE) &
-                      SX127X_RF_OPMODE_MODULATIONSHAPING_MASK) |
-                     (shaping << 3));
+    sx127x_reg_write(dev, SX127X_REG_PARAMP,
+                     (sx127x_reg_read(dev, SX127X_REG_PARAMP) &
+                      SX127X_RF_PARAMP_MODULATIONSHAPING_MASK) |
+                     (shaping << 5));
 }
 
 uint8_t sx127x_get_modulation_shaping(const sx127x_t *dev)
 {
-    uint8_t modulation_shaping = sx127x_reg_read(dev, SX127X_REG_OPMODE) &
-                                 ~SX127X_RF_OPMODE_MODULATIONSHAPING_MASK;
+    uint8_t modulation_shaping = sx127x_reg_read(dev, SX127X_REG_PARAMP) &
+                                 ~SX127X_RF_PARAMP_MODULATIONSHAPING_MASK;
 
     switch (modulation_shaping) {
-        case SX127X_RF_OPMODE_MODULATIONSHAPING_00: DEBUG("No Shaping"); break;
-        case SX127X_RF_OPMODE_MODULATIONSHAPING_01: DEBUG("Gaussian filter BT = 1.0"); break;
-        case SX127X_RF_OPMODE_MODULATIONSHAPING_10: DEBUG("Gaussian filter BT = 0.5"); break;
-        case SX127X_RF_OPMODE_MODULATIONSHAPING_11: DEBUG("Gaussian filter BT = 0.3"); break;
+        case SX127X_RF_PARAMP_MODULATIONSHAPING_00: DEBUG("No Shaping"); break;
+        case SX127X_RF_PARAMP_MODULATIONSHAPING_01: DEBUG("Gaussian filter BT = 1.0"); break;
+        case SX127X_RF_PARAMP_MODULATIONSHAPING_10: DEBUG("Gaussian filter BT = 0.5"); break;
+        case SX127X_RF_PARAMP_MODULATIONSHAPING_11: DEBUG("Gaussian filter BT = 0.3"); break;
     }
 
-    return (modulation_shaping >> 3);
+    return (modulation_shaping >> 5);
 }
 
 int sx127x_set_option(sx127x_t *dev, uint8_t option, bool state)
