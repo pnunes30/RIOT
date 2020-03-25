@@ -1,0 +1,26 @@
+From eef3049b9bb5eca2803276113f8a1efb5c1f5820 Mon Sep 17 00:00:00 2001
+From: Philippe Nunes <philippe.nunes@cortus.com>
+Date: Mon, 17 Jun 2019 14:50:32 +0200
+Subject: [PATCH 05/11] Set CMAKE_FIND_ROOT_PATH_MODE_PROGRAM to never
+
+Only the host system roots will be searched for the programs
+---
+ stack/cmake/toolchains/gcc-arm-embedded.cmake | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/stack/cmake/toolchains/gcc-arm-embedded.cmake b/stack/cmake/toolchains/gcc-arm-embedded.cmake
+index 1d19951..479e123 100644
+--- a/stack/cmake/toolchains/gcc-arm-embedded.cmake
++++ b/stack/cmake/toolchains/gcc-arm-embedded.cmake
+@@ -52,7 +52,7 @@ LIST(APPEND CMAKE_FIND_ROOT_PATH "${TOOLCHAIN_DIR}")
+ MESSAGE(STATUS "Cross-compiling using gcc-arm-embedded toolchain")
+ 
+ # search for programs in the build host directories
+-SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM ONLY)
++SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+ # for libraries and headers in the target directories
+ SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+ SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+-- 
+2.7.4
+
