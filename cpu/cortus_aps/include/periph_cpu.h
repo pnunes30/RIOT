@@ -74,6 +74,9 @@
 #include "mtd.h"
 #endif
 
+#if defined(MODULE_XCVR)
+#include "Bsp/machine/xcvr.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
