@@ -16,7 +16,10 @@ USEMODULE += d7a_fs
 USEMODULE += d7a_contrib
 USEMODULE += xtimer
 
-DRIVER ?= sx1276
+# use CORTUS XCVR driver by default
+# You can also pass `DRIVER` when building the application:
+# $ make BOARD=${RIOT_BOARD} DRIVER=sx1276
+DRIVER ?= xcvr
 
 FEATURES_REQUIRED += periph_spi
 FEATURES_REQUIRED += periph_gpio
@@ -33,7 +36,7 @@ USEMODULE += shell
 USEMODULE += shell_commands
 USEMODULE += ps
 
-USEMODULE += dht
+#USEMODULE += dht
 USEMODULE += fmt
 
 # Use modules for networking

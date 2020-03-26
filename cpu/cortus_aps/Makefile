@@ -5,6 +5,11 @@
 # define the module that is build
 MODULE = cpu
 # add a list of subdirectories, that should also be build
+
+ifeq (cortus_fpga,$(BOARD))
 DIRS = periph
+else
+DIRS = periph xcvr
+endif
 
 include $(RIOTBASE)/Makefile.base

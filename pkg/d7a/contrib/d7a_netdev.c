@@ -23,11 +23,11 @@
 #include "msg.h"
 #include "kernel_types.h"
 
-#include "net/gnrc/netif.h"
-
-#include "d7a_netdev.h"
 #include "d7a/timer.h"
 #include "framework/inc/d7ap.h"
+
+#include "d7a_netdev.h"
+#include "net/gnrc/netif.h"
 
 #define ENABLE_DEBUG (0)
 #include "debug.h"
