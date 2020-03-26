@@ -27,7 +27,12 @@
 #define APS_CPU				"aps3r"
 #endif
 
+#if defined(BOARD_CORTUS_FPGA)
 #define CLOCK_FREQUENCY              8000000
+#else
+#define CLOCK_FREQUENCY              32000000
+#endif
+
 #define USB2_CLOCK_FREQUENCY         50000000
 
 #define CLOCK_SOURCE0               (32000000U)
