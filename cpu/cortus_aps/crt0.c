@@ -15,9 +15,7 @@
  *
  * 
  *********************************************************************************/
-#ifdef __APS__
-#pragma GCC optimize ("Os")	/* IT MUST BE KEPT!!! (else '*ptr=something' is replaced by 'call memset()' which uses an invalid stack */
-#endif
+#pragma GCC optimize ("Os")
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,6 +50,7 @@ extern void aps_start (void) /*__attribute__((weak))*/;
 #define CSR_MSCRATCH    0x340
 #define CSR_MEPC        0x341
 #define CSR_MCAUSE      0x342
+#define CSR_DCSR        0x7b0
 #endif
 
 /* Debugger printf buffer size.
@@ -88,7 +87,9 @@ void illegal_instruction_handler (void) __attribute__((weak));
 void debugger_breakpoint_handler (void);
 #endif
 void debugger_stop_handler       (void);
+#ifdef PROFILING
 void profile_handler             (void);
+#endif
 void interrupt5_handler          (void) __attribute__((weak));
 void interrupt6_handler          (void) __attribute__((weak));
 void interrupt7_handler          (void) __attribute__((weak));
@@ -132,6 +133,23 @@ void interrupt44_handler         (void) __attribute__((weak));
 void interrupt45_handler         (void) __attribute__((weak));
 void interrupt46_handler         (void) __attribute__((weak));
 void interrupt47_handler         (void) __attribute__((weak));
+void interrupt48_handler         (void) __attribute__((weak));
+void interrupt49_handler         (void) __attribute__((weak));
+void interrupt50_handler         (void) __attribute__((weak));
+void interrupt51_handler         (void) __attribute__((weak));
+void interrupt52_handler         (void) __attribute__((weak));
+void interrupt53_handler         (void) __attribute__((weak));
+void interrupt54_handler         (void) __attribute__((weak));
+void interrupt55_handler         (void) __attribute__((weak));
+void interrupt56_handler         (void) __attribute__((weak));
+void interrupt57_handler         (void) __attribute__((weak));
+void interrupt58_handler         (void) __attribute__((weak));
+void interrupt59_handler         (void) __attribute__((weak));
+void interrupt60_handler         (void) __attribute__((weak));
+void interrupt61_handler         (void) __attribute__((weak));
+void interrupt62_handler         (void) __attribute__((weak));
+void interrupt63_handler         (void) __attribute__((weak));
+
 #ifdef __riscv
 void timer_interrupt_handler     (void) __attribute__((weak));
 void software_interrupt_handler  (void) __attribute__((weak));
@@ -142,7 +160,7 @@ void ecall_handler               (void) __attribute__((weak));
 volatile trap_handler_fp trap_vectors[32]
   __attribute__((used)) = 
 #else
-volatile trap_handler_fp trap_vectors[48]
+volatile trap_handler_fp trap_vectors[64]
   __attribute ((section (".vectors"), used)) = 
 #endif
 {
@@ -205,6 +223,22 @@ volatile trap_handler_fp trap_vectors[48]
     [45] = interrupt45_handler,
     [46] = interrupt46_handler,
     [47] = interrupt47_handler,
+    [48] = interrupt48_handler,
+    [49] = interrupt49_handler,
+    [50] = interrupt50_handler,
+    [51] = interrupt51_handler,
+    [52] = interrupt52_handler,
+    [53] = interrupt53_handler,
+    [54] = interrupt54_handler,
+    [55] = interrupt55_handler,
+    [56] = interrupt56_handler,
+    [57] = interrupt57_handler,
+    [58] = interrupt58_handler,
+    [59] = interrupt59_handler,
+    [60] = interrupt60_handler,
+    [61] = interrupt61_handler,
+    [62] = interrupt62_handler,
+    [63] = interrupt63_handler,
 };
 
 /********************************************************************************
@@ -310,7 +344,6 @@ void uart1_outch (void* f, int c)
         assert(f != stdout);
     }
 }
-
 int uart1_inch (void* f) __attribute__((weak));
 int uart1_inch (void* f)
 {
@@ -362,24 +395,22 @@ void initialise_hw (void)
     _dbg_info.size = DBG_PRINTF_BUF_SIZE;
 #endif
     /* Enable the data cache (if present) */
-    //dcache->enable = 1;
-
+#if DATA_CACHE_PRESENT
+    dcache->enable = 1;
+#endif
     // Initialize the UART to reasonable values
-#if 0
     uart1->config = 0;
     uart1->selclk = 0;
     // Uart speed is 115200 bauds
-    uart1->divider = 8*(CLOCK_SOURCE0/*USB2_CLOCK_FREQUENCY*//115200);
+    uart1->divider = 8*(CLOCK_SOURCE0/115200);
     uart1->enable = 1;
-#ifdef SFRADR_UART2
+
     // Initialize the UART to reasonable values
     uart2->config = 0;
     uart2->selclk = 0;
     // Uart speed is 115200 bauds
-    uart2->divider = 8*(CLOCK_SOURCE0/*USB2_CLOCK_FREQUENCY*//115200);
+    uart2->divider = 8*(CLOCK_SOURCE0/115200);
     uart2->enable = 1;
-#endif
-#endif
 }
 
 /********************************************************************************
@@ -398,27 +429,10 @@ extern const unsigned _data_image[];
 /* Start of ram, Start/end of .sbss, .sdata/.data, .bss */
 extern unsigned _sram[], _sbss[], _esbss[], _sdata[], _edata[], _bss[], _ebss[];
 
-#if 0 /* unused declarations */
-
-/* Jtag fuse key 
-   It can be defined here or put directly in the hex file before programming the flash.
-   For the first connection, we use a zero key.
- */
-static volatile unsigned jtag_fuse_key[]
-  __attribute ((section (".key"), used)) = 
-{
-    [0]  = 0x00000000,
-    [1]  = 0x00000000,
-    [2]  = 0x00000000,
-    [3]  = 0x00000000,
-};
-
-extern int main (void);
-extern void init_profile (void);
-extern void start_profile (void);
-extern void stop_profile (void);
-
-#endif /*0*/
+int main (void);
+void init_profile (void);
+void start_profile (void);
+void stop_profile (void);
 
 /* This function must be compiled with optimization enabled so that is does not
    place anything on the stack. The initialization of the .bss section will
@@ -430,6 +444,9 @@ void start(void)
     extern void exception_handler(void);
     asm volatile ("la sp, __stack_top");
     asm volatile ("csrw %0,%1": : "i"(CSR_MTVEC), "r"(exception_handler));
+    /* Enable ebreak machine mode to enter debug mode */
+    asm volatile ("li t6, 0x8000"); 
+    asm volatile ("csrw %0,t6": : "i"(CSR_DCSR));
 #else
     /* Initialize stack pointer */
     asm ("  movhi   r1, #high(__stack_top)\n"
@@ -442,11 +459,12 @@ void start(void)
 
     /* Initialize HW and memory etc and call main */
     while (1) {
-        
+
         const constructor_t* ctor;
         const unsigned *src;
         unsigned *dst;
-
+        int status;
+        
         icache_flush ();
         initialise_hw ();
 
@@ -488,11 +506,9 @@ void start(void)
            'dst' is not on the stack! */
         for (dst = _bss; dst < _ebss; dst++) 
             *dst = 0;
-#ifdef __APS__
         /* Call static constructors */
         for (ctor = __CTOR_LIST__; ctor < __CTOR_END__; ctor++)
             (**ctor)();
-#endif
         
         /* Start profiling */
 #ifdef PROFILING
@@ -501,10 +517,11 @@ void start(void)
         /* The start can be anywhere convenient */
         start_profile();
 #endif  
-
         /* Call main */
         aps_start();
 
+        /* Exit should call destructors if desired */
+        exit (status);
     }
 }
 
@@ -566,7 +583,7 @@ asm (".section .text\n"
      "\n"
      "; Save interrupt source information\n"
      "   stb  r2, [r0]+short(_dbg_info+0*4)\n"
-     /*"; Flush and disable data cache so debugger can see/manipulate data memory\n"
+     "; Flush and disable data cache so debugger can see/manipulate data memory\n"
      "   movhi r6, #high(0x4000a000)\n"
      "   add   r6, #low(0x4000a000)\n"
      "; Read cache en bit\n"
@@ -581,9 +598,9 @@ asm (".section .text\n"
      "; Check pending status\n"
      "wait_pend: \n"
      "   ld.cc r5, [r6]+0x28\n"
-     "   bne.s wait_pend\n"
+     "   bne wait_pend\n"
      "; Disable the cache\n"
-     "   st    r0, [r6]+0x24\n"*/     
+     "   st    r0, [r6]+0x24\n"     
      "; Tell debugger to look at us\n"
      "   movhi r2, #0x1\n"
      "   st    r2, [r3]\n"
@@ -595,9 +612,9 @@ asm (".section .text\n"
      "\n"
      "; Reload all registers and return\n"
      "go:\n"
-     /*"; Renable data cache if previously enabled\n"
+    "; Renable data cache if previously enabled\n"
      "    ld    r5, [r7]\n"
-     "    st    r5, [r6]+0x24\n"*/
+     "    st    r5, [r6]+0x24\n"
      "   icache_flush\n"
      "; renable trace - this could come later but it is useful to\n"
      "; see all the values of all the registers getting reloaded\n"
@@ -622,10 +639,8 @@ asm (".section .text\n"
      "   rti\n");
 #endif
 
-
 void __attribute__((noinline)) exit (int status)
 {
-	(void)status;
     while (1) {
 	/* Reboot */
 #ifdef __riscv
@@ -657,6 +672,8 @@ asm (".section .text\n"
      ".equ ocds, 0x50000000\n"
      ".equ tracebuf, 0x50001000\n"
      ".balign 4\n"
+     ".globl exception_handler\n"
+     ".type exception_handler, @function\n"
      "exception_handler:\n"
      "# Store non caller save registers to stack\n"
      "  addi   sp, sp, -(16*4)\n"
@@ -953,7 +970,13 @@ void start_profile (void)
     unsigned reload = _cpu_clock_frequency_khz/CLOCK_DIVISOR; 
     counter1->reload = reload; 
     counter1->value = reload;
+#ifdef __riscv
+    irq[IRQ_COUNTER1].ipl = 0;
+
+    plic->ien[0] = plic->ien[0] | (1 << IRQ_COUNTER1);
+#else
     irq[IRQ_COUNTER1].ien = 1;
+#endif
     counter1->mask = 1;
 }
 
@@ -982,6 +1005,12 @@ void profile_handler (void)
   unsigned i = (pc - gmonparam.lowpc)/scale;
   if (i < gmonparam.ncounts)
       gmonparam.counts[i]++;
+
+#ifdef __riscv
+  /* Completion message */
+  plic->claim = IRQ_COUNTER1;
+#endif
+  
 }
 
 /* Arc counting routine. 
@@ -1017,11 +1046,42 @@ asm(".section .text\n"
     ".global mcount\n"
     ".type   mcount, @function\n"
     "mcount:\n"
-    "addi     sp, -16*4\n"
-
-
-
-    "addi     sp, 16*4\n"
+    "  addi     sp, sp, -16*4\n"
+    "  sw     ra,  (0*4)(sp)\n"
+    "  sw     t0,  (1*4)(sp)\n"
+    "  sw     t1,  (2*4)(sp)\n"
+    "  sw     t2,  (3*4)(sp)\n"
+    "  sw     a0,  (4*4)(sp)\n"
+    "  sw     a1,  (5*4)(sp)\n"
+    "  sw     a2,  (6*4)(sp)\n"
+    "  sw     a3,  (7*4)(sp)\n"
+    "  sw     a4,  (8*4)(sp)\n"
+    "  sw     a5,  (9*4)(sp)\n"
+    "  sw     a6, (10*4)(sp)\n"
+    "  sw     a7, (11*4)(sp)\n"
+    "  sw     t3, (12*4)(sp)\n"
+    "  sw     t4, (13*4)(sp)\n"
+    "  sw     t5, (14*4)(sp)\n"
+    "  sw     t6, (15*4)(sp)\n"
+    "  mv     a1, ra\n"
+    "  call   _mcount\n"
+    "  lw     ra,  (0*4)(sp)\n"
+    "  lw     t0,  (1*4)(sp)\n"
+    "  lw     t1,  (2*4)(sp)\n"
+    "  lw     t2,  (3*4)(sp)\n"
+    "  lw     a0,  (4*4)(sp)\n"
+    "  lw     a1,  (5*4)(sp)\n"
+    "  lw     a2,  (6*4)(sp)\n"
+    "  lw     a3,  (7*4)(sp)\n"
+    "  lw     a4,  (8*4)(sp)\n"
+    "  lw     a5,  (9*4)(sp)\n"
+    "  lw     a6, (10*4)(sp)\n"
+    "  lw     a7, (11*4)(sp)\n"
+    "  lw     t3, (12*4)(sp)\n"
+    "  lw     t4, (13*4)(sp)\n"
+    "  lw     t5, (14*4)(sp)\n"
+    "  lw     t6, (15*4)(sp)\n"
+    "addi     sp, sp, 16*4\n"
     "ret\n"
     ".size   mcount, .-mcount\n"); 
 #else

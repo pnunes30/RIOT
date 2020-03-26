@@ -19,6 +19,13 @@
 #define _ANALOG_CTL_H
 #include <machine/sfradr.h>
 
+#define ANALOG_RXFE_DC_TRIM          1 //2 bits (must be 1 or 2 bits)
+#define ANALOG_RX_ADC__I_INV         0
+#define ANALOG_RX_ADC__Q_INV         0
+#define ANALOG_RX_ADC__SW_IQ         1
+#define ANALOG_RX_ADC__CLK_PHASE     0
+#define ANALOG_TEST_CTRL33_6         0
+
 typedef struct ANALOG_CTL
 {
     /* LDO1 */
