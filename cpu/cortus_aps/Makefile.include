@@ -17,7 +17,11 @@ INCLUDES += -I$(RIOTCPU)/cortus_aps/include/Bsp
 INCLUDES += -I$(RIOTCPU)/cortus_aps/xcvr/inc
 
 export LINKFLAGS += -L$(RIOTCPU)/cortus_aps/ldscripts
+ifeq (cortus_fpga,$(BOARD))
 LINKER_SCRIPT = elf32aps.ld
+else
+LINKER_SCRIPT = elf32aps_flash.x
+endif
 
 # Modules, to be moved to board's Makefile.include
 USEMODULE += cortus_aps_periph
