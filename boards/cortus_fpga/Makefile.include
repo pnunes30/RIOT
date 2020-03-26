@@ -1,5 +1,7 @@
 # flasher configuration
 
+# The ELFFILE is the base one used for flashing
+FLASHFILE ?= $(ELFFILE)
 
 # if drivers are implemented (for LCD display, buzzer...) include the related headers 
 #INCLUDES += -I$(RIOTBOARD)/$(BOARD)/drivers/include
