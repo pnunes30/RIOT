@@ -24,11 +24,12 @@
 #define ENABLE_DEBUG (0)
 #include "debug.h"
 
+#include "framework/hal/inc/hwradio.h"
+#include "framework/inc/errors.h"
+
 #include "d7a_netdev.h"
 #include "net/netdev.h"
 #include "net/netopt.h"
-#include "framework/hal/inc/hwradio.h"
-#include "framework/inc/errors.h"
 
 #if (ENABLE_DEBUG)
 static void log_print_data(uint8_t* message, uint32_t length);
@@ -58,16 +59,48 @@ static void log_print_data(uint8_t* message, uint32_t length)
 }
 #endif
 
-hw_radio_state_t hw_radio_get_opmode(void)
-{
-    hw_radio_state_t opmode;
+hw_radio_state_t hw_radio_get_opmode() {
+    netopt_state_t state;
 
-    netdev->driver->get(netdev, NETOPT_STATE, &opmode, sizeof(netopt_state_t));
-    return opmode;
-}
+    netdev->driver->get(netdev, NETOPT_STATE, &state, sizeof(netopt_state_t));
+
+    switch(state)
+    {
+    case NETOPT_STATE_RX:
+        return HW_STATE_RX;
+    case NETOPT_STATE_TX:
+        return HW_STATE_TX;
+    case NETOPT_STATE_STANDBY:
+        return HW_STATE_STANDBY;
+    default:
+        DPRINT("Not supported mode");
+        break;
+    }
+
+    return state;
+ }
 
 void hw_radio_set_opmode(hw_radio_state_t opmode) {
-    netdev->driver->set(netdev, NETOPT_STATE, &opmode, sizeof(netopt_state_t));
+    netopt_state_t state;
+
+    switch(opmode)
+    {
+    case HW_STATE_RX:
+        state = NETOPT_STATE_RX;
+        break;
+    case HW_STATE_TX:
+        state = NETOPT_STATE_TX;
+        break;
+    case HW_STATE_STANDBY:
+    case HW_STATE_SLEEP:
+        state = NETOPT_STATE_STANDBY;
+        break;
+    default:
+        DPRINT("Not supported mode");
+        return;
+    }
+
+    netdev->driver->set(netdev, NETOPT_STATE, &state, sizeof(netopt_state_t));
 }
 
 void hw_radio_set_center_freq(uint32_t center_freq)
@@ -150,6 +183,11 @@ void hw_radio_set_rssi_smoothing(uint8_t rssi_samples)
 void hw_radio_set_dc_free(uint8_t scheme)
 {
     netdev->driver->set(netdev, NETOPT_DC_FREE_SCHEME, &scheme, sizeof(uint8_t));
+}
+
+void hw_radio_set_fec(uint8_t enable)
+{
+    netdev->driver->set(netdev, NETOPT_FEC_ON, &enable, sizeof(uint8_t));
 }
 
 void hw_radio_set_sync_word(uint8_t *sync_word, uint8_t sync_size)
@@ -317,6 +355,9 @@ error_t hw_radio_init(hwradio_init_args_t* init_args)
 
     netdev->event_callback = _event_cb;
 
+    netopt_enable_t netopt_enable = NETOPT_ENABLE;
+    netdev->driver->set(netdev, NETOPT_RX_END_IRQ, &netopt_enable, sizeof(netopt_enable_t));
+
     // put the chip into sleep mode after init
     hw_radio_set_idle();
 
@@ -351,14 +392,6 @@ void hw_radio_set_tx_power(int8_t eirp)
 void hw_radio_set_rx_timeout(uint32_t timeout)
 {
     netdev->driver->set(netdev, NETOPT_RX_TIMEOUT, &timeout, sizeof(uint32_t));
-}
-
-void hw_radio_enable_rx_interrupt(bool enable_rx_start_irq, bool enable_rx_end_irq)
-{
-    netopt_enable_t netopt_enable = enable_rx_start_irq ? NETOPT_ENABLE : NETOPT_DISABLE;
-    netdev->driver->set(netdev, NETOPT_RX_START_IRQ, &netopt_enable, sizeof(netopt_enable_t));
-    netopt_enable = enable_rx_end_irq ? NETOPT_ENABLE : NETOPT_DISABLE;
-    netdev->driver->set(netdev, NETOPT_RX_END_IRQ, &netopt_enable, sizeof(netopt_enable_t));
 }
 
 void hw_radio_stop(void) {

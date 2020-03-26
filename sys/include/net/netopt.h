@@ -550,6 +550,11 @@ typedef enum {
     NETOPT_CRC_ON,
 
     /**
+     * @brief   Get/Set the FEC enable flag as uint8_t in host byte order.
+     */
+    NETOPT_FEC_ON,
+
+    /**
      * @brief   Get/Set the DC-free encoding scheme as netopt_dc_free_t type
      */
     NETOPT_DC_FREE_SCHEME,
@@ -754,6 +759,16 @@ typedef enum {
      */
     NETOPT_RX_SYMBOL_TIMEOUT,
 
+    /**
+     * @brief   (@ref address_value_t) read/write xcvr internal register
+     */
+    NETOPT_XCVR_REGISTER,
+
+    /**
+     * @brief   (bool) PLL Lock enable without demodulation
+     */
+    NETOPT_PLL_LOCK,
+
     /* add more options if needed */
 
     /**
@@ -776,6 +791,7 @@ typedef enum {
  * @brief   Option parameter to be used with @ref NETOPT_STATE to set or get
  *          the state of a network device or protocol implementation
  */
+#ifndef HAV_OP_MODE
 typedef enum {
     NETOPT_STATE_OFF = 0,       /**< powered off */
     NETOPT_STATE_SLEEP,         /**< sleep mode */
@@ -795,6 +811,7 @@ typedef enum {
                                  *   not listening to packets. */
     /* add other states if needed */
 } netopt_state_t;
+#endif
 
 /**
  * @brief   Option parameter to be used with @ref NETOPT_RF_TESTMODE
