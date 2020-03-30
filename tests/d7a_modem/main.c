@@ -61,9 +61,7 @@ uint8_t resp_len = 0;
 d7ap_session_config_t session_config = {
   .qos = {
     .qos_resp_mode = SESSION_RESP_MODE_NO,
-    .qos_retry_mode = SESSION_RETRY_MODE_NO,
-    .qos_stop_on_error = false,
-    .qos_record = false
+    .qos_retry_mode = SESSION_RETRY_MODE_NO
   },
   .dormant_timeout = 0,
   .addressee = {
@@ -422,11 +420,6 @@ int main(void)
 
     // Register this application as a D7A client
     client_id = d7ap_register(&desc);
-
-    // dump the packet
-    gnrc_netreg_entry_t dump = GNRC_NETREG_ENTRY_INIT_PID(GNRC_NETREG_DEMUX_CTX_ALL,
-                                                          gnrc_pktdump_pid);
-    gnrc_netreg_register(GNRC_NETTYPE_UNDEF, &dump);
 
     /* initialize ringbuffers */
     for (unsigned i = 0; i < UART_NUMOF; i++) {

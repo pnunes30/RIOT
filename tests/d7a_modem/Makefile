@@ -12,12 +12,14 @@ RIOTBASE ?= $(CURDIR)/../..
 QUIET ?= 0 #1
 
 USEPKG += d7a
+USEMODULE += d7a_fs
 USEMODULE += d7a_contrib
 USEMODULE += xtimer
 
-#ifneq (,$(filter cortus_fpga,$(BOARD)))
-  DRIVER ?= sx1276
-#endif
+# use CORTUS XCVR driver by default
+# You can also pass `DRIVER` when building the application:
+# $ make BOARD=${RIOT_BOARD} DRIVER=sx1276
+DRIVER ?= xcvr
 
 
 #ifneq (,$(filter at86rf2%,$(DRIVER)))
@@ -37,7 +39,7 @@ USEMODULE += fmt
 
 # Use modules for networking
 # gnrc is a meta module including all required, basic gnrc networking modules
-USEMODULE += gnrc
+#USEMODULE += gnrc
 # use the default network interface for the board
 #USEMODULE += gnrc_netdev_default
 # automatically initialize the network interface
