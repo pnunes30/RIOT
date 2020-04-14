@@ -1,1 +1,0 @@
-cd ./dist/tools/ethos/ && sudo ./start_network.sh /dev/ttyUSB1 tap0 fe80::0000:0000:0000:cafe/64

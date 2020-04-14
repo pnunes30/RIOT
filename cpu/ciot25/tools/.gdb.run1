@@ -1,1 +1,0 @@
-sudo setsid bash -c "PATH=$HOME/usr/local/cortus/bin:$PATH LD_LIBRARY_PATH=$HOME/usr/local/cortus/lib:$LD_LIBRARY_PATH $HOME/usr/local/cortus/bin/openocd -f target/cortus-apsv1.cfg  -f interface/cortus-ft2232-1.cfg  -f board/cortus-xc6slx-1.cfg &" && aps-gdb -x /home/jmhemstedt/dev/d7/sw/riot/cpu/aps/tools/gdbinit-openocd-cmdline-jtag-1 bin/cortus_fpga/*.elf
