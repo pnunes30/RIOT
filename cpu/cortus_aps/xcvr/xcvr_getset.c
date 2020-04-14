@@ -458,7 +458,7 @@ void xcvr_restart_rx_chain(ciot25_xcvr_t *dev)
 //    hw_counter_init(1, 100, false);
 //    while(!hw_counter_is_expired(1));
 
-    xtimer_usleep(100);
+    xtimer_usleep(1000);
 
     // RECVEIVER MODE --> so we can flush any bytes that are not supposed to be here
     xcvr->op_mode = 0x2;
@@ -573,9 +573,9 @@ void xcvr_set_max_payload_len(ciot25_xcvr_t *dev, uint16_t maxlen)
 {
     DEBUG("[xcvr] Set max payload len: %d\n", maxlen);
     codec->packet_len = maxlen ;
-        if (dev->settings.state == XCVR_RF_RX_RUNNING)
-           dev->packet.length = maxlen;
 
+    if (dev->settings.state == XCVR_RF_RX_RUNNING)
+        dev->packet.length = maxlen;
 }
 
 uint8_t xcvr_get_op_mode(const ciot25_xcvr_t *dev)
