@@ -395,6 +395,31 @@ static void _isr(netdev_t *netdev)
 {
     sx127x_t *dev = (sx127x_t *)netdev;
 
+    uint8_t irq = dev->irq;
+    dev->irq = 0;
+
+    switch (irq) {
+        case SX127X_IRQ_DIO0:
+            _on_dio0_irq(dev);
+            break;
+
+        case SX127X_IRQ_DIO1:
+            _on_dio1_irq(dev);
+            break;
+
+        case SX127X_IRQ_DIO2:
+            _on_dio2_irq(dev);
+            break;
+
+        case SX127X_IRQ_DIO3:
+            _on_dio3_irq(dev);
+            break;
+
+        default:
+            break;
+    }
+
+/*
     uint8_t interruptReg = sx127x_reg_read(dev, SX127X_REG_LR_IRQFLAGS);
 
     if (interruptReg & (SX127X_RF_LORA_IRQFLAGS_TXDONE |
@@ -415,6 +440,7 @@ static void _isr(netdev_t *netdev)
                         SX127X_RF_LORA_IRQFLAGS_VALIDHEADER)) {
         _on_dio3_irq(dev);
     }
+*/
 }
 
 static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
