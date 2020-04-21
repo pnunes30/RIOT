@@ -510,8 +510,8 @@ static const spi_conf_t spi_config[] = {
 #define SX127x_SPI_BAUDRATE 8 //10000000
 #define SX127x_SPI_BUS      0	//index in spi_config[]
 #define SX127x_SPI_PIN_CS   SPI_CS_PIN
-#define SX127x_DIO0_PIN     GPIO_PIN(SFRADR_GPIO_EDGE1, 0)
-#define SX127x_DIO1_PIN     GPIO_PIN(SFRADR_GPIO_EDGE1, 1)
+#define SX127x_DIO0_PIN     GPIO_PIN(gpioPortA, 0)
+#define SX127x_DIO1_PIN     GPIO_PIN(gpioPortA, 1)
 /** @} */
 
 #ifdef __cplusplus
