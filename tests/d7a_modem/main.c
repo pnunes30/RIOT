@@ -418,8 +418,8 @@ int main(void)
 
     printf("D7A test application PID[%d] \r\n", sched_active_pid);
 
-    // Register this application as a D7A client
-    client_id = d7ap_register(&desc);
+    // Register this application as a D7A client, this is a blocking call
+    while ((client_id = d7ap_register(&desc)) == -1);
 
     /* initialize ringbuffers */
     for (unsigned i = 0; i < UART_NUMOF; i++) {
