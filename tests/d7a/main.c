@@ -147,7 +147,7 @@ static asymcute_req_t *_get_req_ctx(void)
 
 
 
-static uint8_t client_id;
+static int8_t client_id;
 
 static void _d7a_usage(void)
 {
@@ -768,8 +768,8 @@ int main(void)
 
     printf("D7A test application PID[%d] \r\n", sched_active_pid);
 
-    // Register this application as a D7A client
-    client_id = d7ap_register(&desc);
+    // Register this application as a D7A client, this is a blocking call
+    while ((client_id = d7ap_register(&desc)) == -1);
 
     // dump the packet
 #ifdef MODULE_GNRC

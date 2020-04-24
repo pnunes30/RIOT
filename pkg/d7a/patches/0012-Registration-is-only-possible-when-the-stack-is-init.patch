@@ -1,0 +1,68 @@
+From 31bcb979b8dce34c96ae0c06d0cbd096794e00e1 Mon Sep 17 00:00:00 2001
+From: Philippe Nunes <philippe.nunes@cortus.com>
+Date: Fri, 24 Apr 2020 08:51:28 +0200
+Subject: [PATCH 12/12] Registration is only possible when the stack is
+ initialised
+
+---
+ stack/framework/inc/d7ap.h |  4 ++--
+ stack/modules/d7ap/d7ap.c  | 10 ++++++++--
+ 2 files changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/stack/framework/inc/d7ap.h b/stack/framework/inc/d7ap.h
+index 81bd174..9d21bd1 100644
+--- a/stack/framework/inc/d7ap.h
++++ b/stack/framework/inc/d7ap.h
+@@ -188,9 +188,9 @@ void d7ap_stop(void);
+  *
+  * @param[in] desc pointer to the client resource
+  *
+- * @return  the client Id
++ * @return  the client Id (-1 when trying to register whereas the D7A stack is not initialised)
+  */
+-uint8_t d7ap_register(d7ap_resource_desc_t* desc);
++int8_t d7ap_register(d7ap_resource_desc_t* desc);
+ 
+ 
+ /**
+diff --git a/stack/modules/d7ap/d7ap.c b/stack/modules/d7ap/d7ap.c
+index 96fc0b4..c0693de 100644
+--- a/stack/modules/d7ap/d7ap.c
++++ b/stack/modules/d7ap/d7ap.c
+@@ -98,13 +98,14 @@ void d7ap_init()
+ {
+     if(inited)
+         return;
+-    inited = true;
+ 
+     d7ap_fs_init();
+ 
+     // Initialize the D7AP stack
+     d7ap_stack_init();
++
+     registered_client_nb = 0;
++    inited = true;
+ 
+ #ifdef MODULE_ALP
+     d7_alp_interface = (alp_interface_t) {
+@@ -145,11 +146,16 @@ void d7ap_stop()
+  *
+  * @return  the client Id
+  */
+-uint8_t d7ap_register(d7ap_resource_desc_t* desc)
++int8_t d7ap_register(d7ap_resource_desc_t* desc)
+ {
+     assert(registered_client_nb < D7AP_MAX_CLIENT_COUNT);
++
++    if (inited == false)
++        return -1;
++
+     registered_client[registered_client_nb] = *desc;
+     registered_client_nb++;
++    printf("\r\nD7A = %d", registered_client_nb-1);
+     return (registered_client_nb-1);
+ }
+ 
+-- 
+2.7.4
+
