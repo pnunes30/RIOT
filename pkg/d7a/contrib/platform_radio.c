@@ -286,10 +286,12 @@ static void _event_cb(netdev_t *dev, netdev_event_t event)
             DPRINT("Payload: %d bytes, RSSI: %i, LQI: %i" /*SNR: %i, TOA: %i}\n"*/,
                     len, packet_info.rssi, packet_info.lqi/*(int)packet_info.snr,
                     (int)packet_info.time_on_air*/);
+#if ENABLE_DEBUG
             for( int i=0; i < len; i++ )
             {
-                printf(" %02X", rx_packet->data[i]);
+                DPRINT(" %02X", rx_packet->data[i]);
             }
+#endif
             //DPRINT_DATA(rx_packet->data, len);
 
             rx_packet->rx_meta.timestamp = timer_get_counter_value();

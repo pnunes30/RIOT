@@ -272,13 +272,13 @@ void xcvr_set_syncword(ciot25_xcvr_t *dev, uint8_t *syncword, uint8_t sync_size)
 {
     assert(sync_size >= 1);
     assert(sync_size < 8);
+#if ENABLE_DEBUG
     DEBUG("[xcvr] set syncword: len <%d> :", sync_size);
-#ifdef FRAMEWORK_LOG_ENABLED
     for( uint32_t i = 0 ; i < sync_size ; i++ )
     {
-        printf(" %02X", syncword[i]);
+        DEBUG(" %02X", syncword[i]);
     }
-    printf("\r\n");
+    DEBUG("\r\n");
 #endif
 
      uint32_t *syncword_ptr = (uint32_t *)syncword;
