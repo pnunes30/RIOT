@@ -41,7 +41,7 @@
 #include "net/netdev.h"
 #include "net/netopt.h"
 
-#define ENABLE_DEBUG 1
+#define ENABLE_DEBUG (0)
 
 #if ENABLE_DEBUG
 static void log_print_data(uint8_t* message, uint32_t length);

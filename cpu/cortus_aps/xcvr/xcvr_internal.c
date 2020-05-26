@@ -32,7 +32,7 @@
 #include "xcvr_internal.h"
 #include "xcvr_registers.h"
 
-#define ENABLE_DEBUG (1)
+#define ENABLE_DEBUG (0)
 #include "debug.h"
 
 int xcvr_check_version(const ciot25_xcvr_t *dev)
