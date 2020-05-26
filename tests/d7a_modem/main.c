@@ -23,8 +23,6 @@
 #include "periph/uart.h"
 #include "stdio_uart.h"
 
-#include "shell.h"
-#include "shell_commands.h"
 #include "fmt.h"
 #include "xtimer.h"
 
@@ -33,7 +31,7 @@
 
 #include "d7ap.h"
 
-#define ENABLE_DEBUG (1)
+#define ENABLE_DEBUG (0)
 #include "debug.h"
 
 /* UART2 Param */
@@ -74,7 +72,7 @@ d7ap_session_config_t session_config = {
   }
 };
 
-static uint8_t client_id;
+static int8_t client_id;
 
 static void _d7a_usage(void)
 {
@@ -106,12 +104,13 @@ void process_response_from_d7ap(uint16_t trans_id, uint8_t* payload, uint8_t len
     DEBUG("Response received: %s\n", app_data);
     DEBUG("Response received from: %s\n", addr_hex_string);
 
-    printf("\nd7a rx \"%s\" \"%s\"\n", app_data, addr_hex_string);
+    //printf("d7a rx \"%s\" \"%s\"\n", app_data, addr_hex_string);
 }
 
 bool process_command_from_d7ap(uint8_t* payload, uint8_t len, d7ap_session_result_t result)
 {
     char app_data[D7A_PAYLOAD_MAX_SIZE * 2 + 1];
+    int length = 0;
 
     DEBUG("rssi <%idBm>, link budget <%i>\r\n", result.rx_level, result.link_budget);
 
@@ -123,20 +122,20 @@ bool process_command_from_d7ap(uint8_t* payload, uint8_t len, d7ap_session_resul
     DEBUG("Unsolicited message received: %s\n", app_data);
     DEBUG("Unsolicited message received from: %s\n", addr_hex_string);
 
-    printf("\nd7a rx \"%s\" \"%s\"\n", app_data, addr_hex_string);
-    sprintf(buffer, "d7a rx %s %s\n", app_data, addr_hex_string);
-    uart_write(UART_DEV(1), buffer, strlen(buffer));
+    length = sprintf(buffer, "d7a rx %s %s\r\n\0", app_data, addr_hex_string);
+    uart_write(UART_DEV(1), buffer, length);
     // By default, notify that a response should be sent (in practice, by the host over serial)
+
     return true;
 }
 
 void command_completed(uint16_t trans_id, error_t error)
 {
     if (error) {
-        printf("The request with transId <%d> has been transmitted with error %d\r\n", trans_id, error);
+        //printf("The request with transId <%d> has been transmitted with error %d\r\n", trans_id, error);
     }
     else {
-        printf("The request with transId <%d> has been transmitted successfully\r\n", trans_id);
+        //printf("The request with transId <%d> has been transmitted successfully\r\n", trans_id);
     }
 }
 
@@ -146,11 +145,11 @@ static void send_packet_over_d7a(char* payload, uint8_t len)
 
     if (d7ap_send(client_id, &session_config, (uint8_t *)payload, len, resp_len, &trans_id) != 0)
     {
-        printf("d7ap_send failed\r\n");
+        //printf("d7ap_send failed\r\n");
         return;
     }
 
-    printf("Request accepted with transaction Id %d:\n", trans_id);
+    //printf("Request accepted with transaction Id %d:\n", trans_id);
 }
 
 static int _cmd_d7a(int argc, char **argv)
@@ -162,7 +161,7 @@ static int _cmd_d7a(int argc, char **argv)
 
     for(int i=0; i < argc; i++)
     {
-    	printf("argc %d arg %s \n", i, argv[i]);
+    	//printf("argc %d arg %s \n", i, argv[i]);
     }
 
     if (strcmp(argv[1], "get") == 0) {
@@ -178,13 +177,13 @@ static int _cmd_d7a(int argc, char **argv)
             uint8_t len = d7ap_addressee_id_length(devaddr.ctrl.id_type);
             fmt_bytes_hex(addr_hex_string, devaddr.id, len);
             addr_hex_string[len * 2] = '\0';
-            printf("Device Address: %s\n", addr_hex_string);
+            //printf("Device Address: %s\n", addr_hex_string);
         }
         else if (strcmp("class", argv[2]) == 0) {
-        	printf("Device Access class: 0x%02X\n", d7ap_get_access_class());
+        	//printf("Device Access class: 0x%02X\n", d7ap_get_access_class());
         }
         else if (strcmp("tx_power", argv[2]) == 0) {
-        	printf("TX power index: %d\n", d7ap_get_tx_power());
+        	//printf("TX power index: %d\n", d7ap_get_tx_power());
         }
         else {
             _d7a_get_usage();
@@ -223,7 +222,7 @@ static int _cmd_d7a(int argc, char **argv)
             }
             else if (strcmp(argv[index], "addr") == 0) {
                 if (strlen(argv[index+1]) != ID_TYPE_UID_ID_LENGTH * 2) {
-                    printf("Usage: d7a set devaddr <8 hex chars>\r\n");
+                    //printf("Usage: d7a set devaddr <8 hex chars>\r\n");
                     return 1;
                 }
                 fmt_hex_bytes(session_config.addressee.id, argv[index+1]);
@@ -258,7 +257,7 @@ static void handle_input_line(char *line)
 {
 	static const char *INCORRECT_QUOTING = "shell: incorrect quoting";
 
-	printf("line = %s\n", line);
+	//printf("line = %s\n", line);
 
     /* first we need to calculate the number of arguments */
     unsigned argc = 0;
@@ -367,7 +366,7 @@ static void rx_cb(void *arg, uint8_t data)
 
     ringbuffer_add_one(&(ctx[dev].rx_buf), data);
 
-    if (data == '\n') {
+    if ((data == '\n') || (data == '\0')) {
     	msg_t msg;
         msg.content.value = (uint32_t)dev;
         msg_send(&msg, uart_pid);
@@ -388,25 +387,21 @@ static void *uart_recv(void *arg)
         uint16_t i = 0;
         char c;
         do {
-        	c = (int)ringbuffer_get_one(&(ctx[dev].rx_buf));
-        	if (c == '\n')
-        		break;
+            c = (int)ringbuffer_get_one(&(ctx[dev].rx_buf));
+            if (c == '\n')
+                break;
 
-        	received_cmd[i] = c;
-        	i++;
+            received_cmd[i] = c;
+        i++;
         } while (i <= MAX_COMMAND_SIZE);
         received_cmd[i] = '\0';
+        //printf("%s", received_cmd);
         handle_input_line(received_cmd);
         i = 0;
     }
     /* this should never be reached */
     return NULL;
 }
-
-static const shell_command_t shell_commands[] = {
-    { "d7a", "control the d7a stack", _cmd_d7a },
-    { NULL, NULL, NULL }
-};
 
 int main(void)
 {
@@ -419,7 +414,8 @@ int main(void)
     printf("D7A test application PID[%d] \r\n", sched_active_pid);
 
     // Register this application as a D7A client, this is a blocking call
-    while ((client_id = d7ap_register(&desc)) == -1);
+    while ((client_id = d7ap_register(&desc)) < 0);
+    printf("D7A Client ID : %d \r\n", client_id);
 
     /* initialize ringbuffers */
     for (unsigned i = 0; i < UART_NUMOF; i++) {
@@ -427,7 +423,7 @@ int main(void)
     }
 
     /* initialize UART 2*/
-    int dev = 1;		/* 0 is for Shell(UART1), 1 for UART2 */
+    int dev = 1;    /* Can't use UART1 on ciot25 demo board */
 	int res = 0;
 	uint32_t baud = 115200;
     res = uart_init(UART_DEV(dev), baud, rx_cb, (void *)dev);
@@ -437,12 +433,7 @@ int main(void)
 
     /* start the uart 2 thread */
     uart_pid = thread_create(mod_stack, sizeof(mod_stack),
-    		(THREAD_PRIORITY_MAIN - 1), 0, uart_recv, NULL, "uart_resp");
-
-    /* start the shell */
-    printf("Starting the shell now\r\n");
-    char line_buf[SHELL_DEFAULT_BUFSIZE];
-    shell_run(shell_commands, line_buf, SHELL_DEFAULT_BUFSIZE);
+        (THREAD_PRIORITY_MAIN - 1), 0, uart_recv, NULL, "uart_resp");
 
     return 0;
 }

@@ -3,7 +3,7 @@ APPLICATION = APPD7A_MODEM
 # If no BOARD is found in the environment, use this default:
 BOARD ?= cortus_fpga
 
-BOARD_WHITELIST := cortus_fpga
+BOARD_WHITELIST := cortus_fpga ciot25_demo_board
 
 # This has to be the absolute path to the RIOT base directory:
 RIOTBASE ?= $(CURDIR)/../..
@@ -25,14 +25,15 @@ DRIVER ?= xcvr
 #ifneq (,$(filter at86rf2%,$(DRIVER)))
   FEATURES_REQUIRED = periph_spi
   FEATURES_REQUIRED = periph_gpio
+  FEATURES_REQUIRED = periph_uart
 #endif
 
 USEMODULE += $(DRIVER)
 
 USEMODULE += random
-USEMODULE += shell
-USEMODULE += shell_commands
-USEMODULE += ps
+#USEMODULE += shell
+#USEMODULE += shell_commands
+#USEMODULE += ps
 
 #USEMODULE += dht
 USEMODULE += fmt
