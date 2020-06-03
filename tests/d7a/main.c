@@ -37,6 +37,9 @@
 #define ENABLE_DEBUG (1)
 #include "debug.h"
 
+/* Use Auto MQTT */
+#define ENABLE_MQTT_AUTO 0
+
 /* set interval to 5 second */
 #define INTERVAL (8 * US_PER_SEC)
 
@@ -75,8 +78,8 @@ bool send_dht_hum = true;
 dht_t dht_dev;
 #endif
 
-#ifdef MODULE_ASYMCUTE
-
+//#ifdef MODULE_ASYMCUTE
+#if ENABLE_MQTT_AUTO
 #include "net/asymcute.h"
 
 #ifndef REQ_CTX_NUMOF
@@ -264,7 +267,8 @@ void sensor_measurement(void *arg)
 
     if (send_dht_temp)
     {
-#ifdef MODULE_ASYMCUTE
+//#ifdef MODULE_ASYMCUTE
+#if ENABLE_MQTT_AUTO
         /* get request context */
         asymcute_req_t *req = _get_req_ctx();
         if (req == NULL) {
@@ -288,7 +292,8 @@ void sensor_measurement(void *arg)
 
     if (send_dht_hum)
     {
-#ifdef MODULE_ASYMCUTE
+//#ifdef MODULE_ASYMCUTE
+#if ENABLE_MQTT_AUTO
         /* get request context */
         asymcute_req_t *req = _get_req_ctx();
         if (req == NULL) {
@@ -392,7 +397,8 @@ static int _cmd_d7a(int argc, char **argv)
 
         if (strcmp(argv[2], "temp") == 0) {
             send_dht_temp = true;
-#ifdef MODULE_ASYMCUTE  
+//#ifdef MODULE_ASYMCUTE
+#if ENABLE_MQTT_AUTO
             /* get request context */
             asymcute_req_t *req = _get_req_ctx();
             if (req == NULL) {
@@ -412,7 +418,8 @@ static int _cmd_d7a(int argc, char **argv)
             send_dht_hum = false;
             send_dht_temp = false;
             xtimer_remove(&dht_timer);
-#ifdef MODULE_ASYMCUTE
+//#ifdef MODULE_ASYMCUTE
+#if ENABLE_MQTT_AUTO
             /* get request context */
             asymcute_req_t *req = _get_req_ctx();
             if (req == NULL) {
@@ -501,7 +508,8 @@ static const shell_command_t shell_commands[] = {
     { NULL, NULL, NULL }
 };
 
-#ifdef MODULE_ASYMCUTE
+//#ifdef MODULE_ASYMCUTE
+#if ENABLE_MQTT_AUTO
 
 static void _on_pub_evt(const asymcute_sub_t *sub, unsigned evt_type,
                         const void *data, size_t len, void *arg)
@@ -792,7 +800,8 @@ int main(void)
 
     dht_timer.callback = sensor_measurement;
 
-#ifdef MODULE_ASYMCUTE
+//#ifdef MODULE_ASYMCUTE
+#if ENABLE_MQTT_AUTO
     puts("Init Asymcute MQTT-SN library\n");
 
     /* setup the connection context */
