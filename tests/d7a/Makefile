@@ -3,7 +3,7 @@ APPLICATION = APPD7A
 # If no BOARD is found in the environment, use this default:
 BOARD ?= b-l072z-lrwan1
 
-BOARD_WHITELIST := cortus_fpga b-l072z-lrwan1
+BOARD_WHITELIST := cortus_fpga b-l072z-lrwan1 ciot25_demo_board
 
 # This has to be the absolute path to the RIOT base directory:
 RIOTBASE ?= $(CURDIR)/../..
