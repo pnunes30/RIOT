@@ -107,9 +107,9 @@ static inline uint8_t timer_prescaler_value(uint8_t idx)
 /******************** beg of manual config ************************/
 //#define ARCH_TIMER_MULT           (1)         // ARCH_TIMER_MULT!=1 is not implemented.
 
-#define ARCH_XTIMER_CLK         (2)             // 32, 16, 8, 4 MHz
+#define ARCH_XTIMER_CLK         (0)             // 32, 16, 8, 4 MHz
 #define ARCH_XTIMER_PRE         (0)             // f/1 f/2 f/4 f/8
-#define ARCH_XTIMER_HZ          (8000000UL)    // (1M * 32, 16, 8, 4, 2, 1, 0.5)
+#define ARCH_XTIMER_HZ          (32000000UL)    // (1M * 32, 16, 8, 4, 2, 1, 0.5)
 #undef ARCH_XTIMER_CONVERSION                  // must be defined if XTIMER_HZ is not supported (i.e isn't a power of 2 multiple of 1MHz).
 
 #ifndef APS_XTIMER_OVERCLOCK
@@ -177,8 +177,8 @@ static const timer_conf_t timer_config[] = {
 #define _CAL_XTIMER_ISR_BACKOFF(read_ov,isr_ov) ((unsigned int)(4*(_CAL_XTIMER_OVERHEAD(read_ov,isr_ov))))  //xticks. used to spin if (next_target<now+ISR_BACKOFF) => don't set too low
 
 #ifndef APS_TIMER_CALIBRATE
-#define APS_TIMER_READ_OVERHEAD     ((ARCH_XTIMER_HZ<<5)/CLOCK_FREQUENCY)
-#define APS_TIMER_ISR_OVERHEAD      ((ARCH_XTIMER_HZ<<6)/CLOCK_FREQUENCY)
+#define APS_TIMER_READ_OVERHEAD     251 // from aps_timer_calibrate //((ARCH_XTIMER_HZ<<5)/CLOCK_FREQUENCY)
+#define APS_TIMER_ISR_OVERHEAD      364 // from aps_timer_calibrate //((ARCH_XTIMER_HZ<<6)/CLOCK_FREQUENCY)
 #define XTIMER_OVERHEAD             _CAL_XTIMER_OVERHEAD(APS_TIMER_READ_OVERHEAD, APS_TIMER_ISR_OVERHEAD)
 #define XTIMER_BACKOFF              _CAL_XTIMER_BACKOFF(APS_TIMER_READ_OVERHEAD, APS_TIMER_ISR_OVERHEAD)
 #define XTIMER_ISR_BACKOFF          _CAL_XTIMER_ISR_BACKOFF(APS_TIMER_READ_OVERHEAD, APS_TIMER_ISR_OVERHEAD)
@@ -219,7 +219,7 @@ extern unsigned int aps_xtimer_isr_backoff;
  *
  * i.e. xtimer_set_msg(offset) works only with u32 offsets that are converted
  * internally from us to ticks on u32.
- * => If HZ>HZ_BASE it leads to undefined behaviour when offset>U32_MAX*HZ/HZ_BASE.
+ * => If HZ>HZ_BASE it leads to undefined behavior when offset>U32_MAX*HZ/HZ_BASE.
  */
 
 /* arch specific xtimer tick_conversion hooks */
@@ -228,7 +228,7 @@ static inline uint32_t arch_xtimer_ticks_from_usec(uint32_t usec) {
      * no overflow check is done in tick_conversion.h
      * i.e. when XTIMER_SHIFT=1 for XTIMER_HZ=2MHz we just multiply by 2.
      * Hence xtimer_usleep and in general all xtimer api must be called
-     * carefully. They're ment to be called internally.
+     * carefully. They're meant to be called internally.
      * Consequence: to benefit from type checking protection
      * and avoid overflow as much as possible, the XTIMER_HZ should be
      * as close as possible from XTIMER_HZ_BASE.

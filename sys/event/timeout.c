@@ -26,7 +26,7 @@ void event_timeout_init(event_timeout_t *event_timeout, event_queue_t *queue, ev
 
 void event_timeout_set(event_timeout_t *event_timeout, uint32_t timeout)
 {
-    xtimer_set(&event_timeout->timer, timeout);
+    xtimer_set64(&event_timeout->timer, (uint64_t)timeout);
 }
 
 void event_timeout_clear(event_timeout_t *event_timeout)
