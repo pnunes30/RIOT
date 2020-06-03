@@ -97,13 +97,16 @@ static uint16_t _topic_parse_pre(const char *name)
 
 static int _topic_init(asymcute_topic_t *t, const char *name)
 {
+    int ret = 0;
     uint16_t id = _topic_parse_pre(name);
 
     if (id != 0) {
         name = NULL;
     }
 
-    if (asymcute_topic_init(t, name, id) != ASYMCUTE_OK) {
+    ret = asymcute_topic_init(t, name, id);
+    if (ret != ASYMCUTE_OK) {
+        printf("[mqtt] error %i\n", ret);
         return 1;
     }
     return 0;
@@ -242,6 +245,8 @@ static int _ok(asymcute_req_t *req)
 
 static int _cmd_connect(int argc, char **argv)
 {
+    int ret = 0;
+
     if (argc < 2) {
         printf("usage %s <cli id> [<addr> [<will topic> <will msg>]]\n",
                argv[0]);
@@ -254,8 +259,9 @@ static int _cmd_connect(int argc, char **argv)
         return 1;
     }
 
-    if (asymcute_connect(&_connection, req, argv[1], argv[2], true, NULL) != ASYMCUTE_OK) {
-        puts("error: failed to issue CONNECT request");
+    ret = asymcute_connect(&_connection, req, argv[1], argv[2], true, NULL);
+    if (ret != ASYMCUTE_OK) {
+        printf("[mqtt] error %i: failed to issue CONNECT request", ret);
         return 1;
     }
     return _ok(req);
@@ -263,6 +269,8 @@ static int _cmd_connect(int argc, char **argv)
 
 static int _cmd_disconnect(int argc, char **argv)
 {
+    int ret = 0;
+
     (void)argc;
     (void)argv;
 
@@ -272,8 +280,9 @@ static int _cmd_disconnect(int argc, char **argv)
         return 1;
     }
 
-    if (asymcute_disconnect(&_connection, req, NULL) != ASYMCUTE_OK) {
-        puts("error: failed to issue DISCONNECT request");
+    ret = asymcute_disconnect(&_connection, req, NULL);
+    if (ret != ASYMCUTE_OK) {
+        printf("[mqtt] error %i: failed to issue DISCONNECT request", ret);
         return 1;
     }
     return _ok(req);
@@ -281,6 +290,8 @@ static int _cmd_disconnect(int argc, char **argv)
 
 static int _cmd_reg(int argc, char **argv)
 {
+    int ret = 0;
+
     if (argc < 2) {
         printf("usage: %s <topic name>\n", argv[0]);
         _topic_print_help();
@@ -314,8 +325,10 @@ static int _cmd_reg(int argc, char **argv)
         puts("error: unable to initialize topic");
         return 1;
     }
-    if (asymcute_register(&_connection, req, t) != ASYMCUTE_OK) {
-        puts("error: unable to send REGISTER request\n");
+
+    ret = asymcute_register(&_connection, req, t);
+    if (ret != ASYMCUTE_OK) {
+        printf("[mqtt] error %i: unable to send REGISTER request\n", ret);
         return 1;
     }
     return _ok(req);
@@ -351,6 +364,8 @@ static int _cmd_unreg(int argc, char **argv)
 
 static int _cmd_pub(int argc, char **argv)
 {
+    int ret = 0;
+
     if (argc < 3) {
         printf("usage: %s <topic> <data> [QoS level]\n", argv[0]);
         _topic_print_help();
@@ -380,9 +395,9 @@ static int _cmd_pub(int argc, char **argv)
 
     /* publish data */
     size_t len = strlen(argv[2]);
-    if (asymcute_publish(&_connection, req, &t, argv[2], len, flags) !=
-        ASYMCUTE_OK) {
-        puts("error: unable to send PUBLISH message");
+    ret = asymcute_publish(&_connection, req, &t, argv[2], len, flags);
+    if (ret != ASYMCUTE_OK) {
+        printf("[mqtt] error %i: unable to send PUBLISH message", ret);
         return 1;
     }
     if (qos == 0) {
@@ -394,6 +409,8 @@ static int _cmd_pub(int argc, char **argv)
 
 static int _cmd_sub(int argc, char **argv)
 {
+    int ret = 0;
+
     if (argc < 2) {
         printf("usage: %s <topic> [QoS level]\n", argv[0]);
         _topic_print_help();
@@ -434,10 +451,10 @@ static int _cmd_sub(int argc, char **argv)
 
     printf("using req %p, sub %p\n", (void *)req, (void *)sub);
 
-    if (asymcute_subscribe(&_connection, req, sub, t, _on_pub_evt, NULL, flags)
-        != ASYMCUTE_OK) {
+    ret = asymcute_subscribe(&_connection, req, sub, t, _on_pub_evt, NULL, flags);
+    if (ret != ASYMCUTE_OK) {
         asymcute_topic_reset(t);
-        puts("error: unable to send SUBSCRIBE request");
+        printf("[mqtt] error %i: unable to send SUBSCRIBE request",ret);
         return 1;
     }
 
@@ -446,6 +463,8 @@ static int _cmd_sub(int argc, char **argv)
 
 static int _cmd_unsub(int argc, char **argv)
 {
+    int ret = 0;
+
     if (argc < 2) {
         printf("usage: %s <topic>\n", argv[0]);
         return 1;
@@ -465,8 +484,9 @@ static int _cmd_unsub(int argc, char **argv)
     }
 
     /* issue unsubscribe request */
-    if (asymcute_unsubscribe(&_connection, req, sub) != ASYMCUTE_OK) {
-        puts("error: unable to send UNSUBSCRIBE request");
+    ret = asymcute_unsubscribe(&_connection, req, sub);
+    if (ret != ASYMCUTE_OK) {
+        printf("[mqtt] error %i: unable to send UNSUBSCRIBE request", ret);
         return 1;
     }
 
@@ -531,6 +551,8 @@ static void _asymcute_usage(char **argv)
     printf("%s sub <topic> [QoS level]\n", argv[0]);
     printf("%s unsub <topic name>\n", argv[0]);
     printf("%s connect <cli id> <addr> [<will topic> <will msg>]\n", argv[0]);
+    printf("%s info\n", argv[0]);
+    printf("%s init\n", argv[0]);
 }
 
 int _asymcute_handler(int argc, char **argv)
