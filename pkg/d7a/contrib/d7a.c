@@ -134,6 +134,10 @@ static void response_callback(uint16_t trans_id, uint8_t* payload,uint8_t len, d
 static bool command_callback(uint8_t* payload, uint8_t len, d7ap_session_result_t result)
 {
     current_addressee = result.addressee;
+    if (!addressee_count || (!get_access_class_from_address((d7a_address *)result.addressee.id)))
+    {
+        register_remote_addressee(&result.addressee);
+    }
 
     DEBUG("Forward unsolicited request to the client\n");
 
