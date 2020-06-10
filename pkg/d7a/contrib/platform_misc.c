@@ -47,7 +47,9 @@ void hw_watchdog_feed(void)
 
 __LINK_C uint64_t hw_get_unique_id(void)
 {
-    return 0x1122334455667788;
+    return 0x1122334455667788;  /* Modem */
+    //return 0xdf00b9de4031fe6a;  /* Node 1 */
+    //return 0x2600bdf005fd6804;  /* Node 2 */
 }
 
 __LINK_C void start_atomic(void)
