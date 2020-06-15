@@ -19,7 +19,7 @@
 #include "mutex.h"
 #include "thread.h"
 #include "msg.h"
-#include "ringbuffer.h"
+#include "tsrb.h"
 #include "periph/uart.h"
 #include "stdio_uart.h"
 
@@ -37,8 +37,8 @@
 /* UART2 Param */
 #define UART_BUFSIZE        	(512U)
 typedef struct {
-    char rx_mem[UART_BUFSIZE];
-    ringbuffer_t rx_buf;
+    uint8_t rx_mem[UART_BUFSIZE];
+    tsrb_t rx_buf;
 } uart_ctx_t;
 static uart_ctx_t ctx[UART_NUMOF];
 
@@ -76,17 +76,17 @@ static int8_t client_id;
 
 static void _d7a_usage(void)
 {
-    puts("Usage: d7a <get|tx>");
+    //puts("Usage: d7a <get|tx>");
 }
 
 static void _d7a_tx_usage(void)
 {
-    puts("Usage: d7a tx <payload> [qos] [timeout] [access_class] [addr] [resp_len]");
+    //puts("Usage: d7a tx <payload> [qos] [timeout] [access_class] [addr] [resp_len]");
 }
 
 static void _d7a_get_usage(void)
 {
-    puts("Usage: d7a get <devaddr|class|tx_power>");
+    //puts("Usage: d7a get <devaddr|class|tx_power>");
 }
 
 void process_response_from_d7ap(uint16_t trans_id, uint8_t* payload, uint8_t len, d7ap_session_result_t result)
@@ -364,7 +364,7 @@ static void rx_cb(void *arg, uint8_t data)
 {
     uart_t dev = (uart_t)arg;
 
-    ringbuffer_add_one(&(ctx[dev].rx_buf), data);
+    tsrb_add_one(&(ctx[dev].rx_buf), data);
 
     if ((data == '\n') || (data == '\0')) {
     	msg_t msg;
@@ -387,7 +387,7 @@ static void *uart_recv(void *arg)
         uint16_t i = 0;
         char c;
         do {
-            c = (int)ringbuffer_get_one(&(ctx[dev].rx_buf));
+            c = (int)tsrb_get_one(&(ctx[dev].rx_buf));
             if (c == '\n')
                 break;
 
@@ -395,7 +395,7 @@ static void *uart_recv(void *arg)
         i++;
         } while (i <= MAX_COMMAND_SIZE);
         received_cmd[i] = '\0';
-        //printf("%s", received_cmd);
+        //printf("\n%s\n", received_cmd);
         handle_input_line(received_cmd);
         i = 0;
     }
@@ -419,7 +419,7 @@ int main(void)
 
     /* initialize ringbuffers */
     for (unsigned i = 0; i < UART_NUMOF; i++) {
-        ringbuffer_init(&(ctx[i].rx_buf), ctx[i].rx_mem, UART_BUFSIZE);
+        tsrb_init(&(ctx[i].rx_buf), ctx[i].rx_mem, UART_BUFSIZE);
     }
 
     /* initialize UART 2*/

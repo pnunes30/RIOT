@@ -37,6 +37,7 @@ USEMODULE += random
 
 #USEMODULE += dht
 USEMODULE += fmt
+USEMODULE += tsrb
 
 # Use modules for networking
 # gnrc is a meta module including all required, basic gnrc networking modules
