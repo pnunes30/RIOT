@@ -237,7 +237,7 @@ int _fs_init(void)
 #endif
 
     assert(number_of_files < FRAMEWORK_FS_FILE_COUNT);
-    DPRINT("number_of_files: %d", number_of_files);
+    DPRINT("number_of_files: %ld", number_of_files);
     for(int file_id = 0; file_id < FRAMEWORK_FS_FILE_COUNT; file_id++)
     {
         mtd_read(mtd[FS_MTD_DEVICE_TYPE_METADATA], (uint8_t*)&files[file_id],
@@ -271,7 +271,7 @@ int _fs_init(void)
                 {
                     //copy defaults from permanent storage to volatile
                     uint8_t data = 0x00;
-                    for(int i=0; i < files[file_id].length; i++)
+                    for(unsigned int i=0; i < files[file_id].length; i++)
                     {
                         mtd_read(mtd[FS_MTD_DEVICE_TYPE_PERMANENT], &data,
                                  files[file_id].addr + i, 1);
