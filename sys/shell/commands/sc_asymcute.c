@@ -17,6 +17,7 @@
  *
  * @}
  */
+
 #if MODULE_ASYMCUTE
 #include <stdio.h>
 #include <string.h>
@@ -543,6 +544,29 @@ static int _cmd_init(int argc, char **argv)
     return 0;
 }
 
+static int _cmd_topics(int argc, char **argv)
+{
+    (void)argc;
+    (void)argv;
+
+    puts("--- Predefined Topics list ---");
+    printf("                            topics ID\n"
+           "                          node_1 | node_2\n"
+           "shadow/update           : pre_10 | pre_50\n"
+           "shadow/update/rejected  : pre_11 | pre_51\n"
+           "shadow/update/accepted  : pre_12 | pre_52\n"
+           "shadow/update/documents : pre_13 | pre_53\n"
+           "shadow/update/delta     : pre_14 | pre_54\n"
+           "shadow/get              : pre_20 | pre_60\n"
+           "shadow/get/rejected     : pre_21 | pre_61\n"
+           "shadow/get/accepted     : pre_22 | pre_62\n"
+           "shadow/delete           : pre_30 | pre_70\n"
+           "shadow/delete/rejected  : pre_31 | pre_71\n"
+           "shadow/delete/accepted  : pre_32 | pre_72\n");
+
+    return 0;
+}
+
 static void _asymcute_usage(char **argv)
 {
     printf("%s reg <topic name>\n", argv[0]);
@@ -553,6 +577,7 @@ static void _asymcute_usage(char **argv)
     printf("%s connect <cli id> <addr> [<will topic> <will msg>]\n", argv[0]);
     printf("%s info\n", argv[0]);
     printf("%s init\n", argv[0]);
+    printf("%s topics\n", argv[0]);
 }
 
 int _asymcute_handler(int argc, char **argv)
@@ -588,6 +613,9 @@ int _asymcute_handler(int argc, char **argv)
     }
     else if (strcmp(argv[1], "init") == 0) {
         return _cmd_init(argc - 1, &argv[1]);
+    }
+    else if (strcmp(argv[1], "topics") == 0) {
+        return _cmd_topics(argc - 1, &argv[1]);
     }
     else {
         printf("MQTT-SN: unsupported sub-command \"%s\"\n", argv[1]);

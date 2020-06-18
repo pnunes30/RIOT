@@ -915,7 +915,9 @@ int asymcute_topic_init(asymcute_topic_t *topic, const char *topic_name,
     size_t len = 0;
 
     if (asymcute_topic_is_reg(topic)) {
-        return ASYMCUTE_REGERR;
+        /* no need to register if topic is a predefined topic */
+        if (topic_name != NULL)
+            return ASYMCUTE_REGERR;
     }
 
     if (topic_name == NULL) {
@@ -1163,7 +1165,9 @@ int asymcute_publish(asymcute_con_t *con, asymcute_req_t *req,
     }
     /* make sure topic is registered */
     if (!asymcute_topic_is_reg(topic) || (topic->con != con)) {
-        return ASYMCUTE_REGERR;
+        /* no need to register if topic is a predefined topic */
+        if (topic->flags != 1)
+            return ASYMCUTE_REGERR;
     }
     /* check if we are connected to a gateway */
     mutex_lock(&con->lock);
