@@ -700,6 +700,27 @@ void xcvr_set_preamble_length(ciot25_xcvr_t *dev, uint8_t preamble)
     codec->packet_config = ((codec->packet_config) & XCVR_CODEC_PACKET_CONFIG_PREAMBLE_LENGTH_MASK) | (preamble << 8);
 }
 
+
+void xcvr_set_preamble_detector_size(ciot25_xcvr_t *dev, uint8_t size)
+{
+    DEBUG("[xcvr] Set preamble detector size (symbols): %d\n", size);
+
+    /*
+     *  bit 7-1  rw Preamble detector length
+     *  0x20 (default)
+     **/
+    codec->detector_config = ((codec->detector_config) & XCVR_CODEC_PACKET_CONFIG_PREAMBLE_THRESHOLD_MASK) | (size << 1);
+    DEBUG("[xcvr] detector config: %04x\n", codec->detector_config);
+}
+
+uint8_t xcvr_get_preamble_detector_size(ciot25_xcvr_t *dev)
+{
+    uint8_t size = (uint8_t)((codec->detector_config & 0xFF) >> 1) ;
+
+    DEBUG("[xcvr] Get preamble detector size (symbols): %d\n", size);
+    return (size);
+}
+
 void xcvr_set_rx_timeout(ciot25_xcvr_t *dev, uint32_t timeout)
 {
     DEBUG("[xcvr] Set RX timeout: %lu\n", timeout);

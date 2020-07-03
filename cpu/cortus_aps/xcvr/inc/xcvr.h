@@ -488,6 +488,9 @@ uint8_t xcvr_get_rssi_smoothing(const ciot25_xcvr_t *dev);
 void xcvr_set_sync_preamble_detect_on(ciot25_xcvr_t *dev, bool enable);
 uint8_t xcvr_get_sync_preamble_detect_on(const ciot25_xcvr_t *dev);
 
+void xcvr_set_preamble_detector_size(ciot25_xcvr_t *dev, uint8_t size);
+uint8_t xcvr_get_preamble_detector_size(ciot25_xcvr_t *dev);
+
 void xcvr_set_dc_free(ciot25_xcvr_t *dev, uint8_t encoding_scheme);
 uint8_t xcvr_get_dc_free(const ciot25_xcvr_t *dev);
 

@@ -397,6 +397,11 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
             *((uint8_t*) val) = xcvr_get_preamble_length(dev);
             return sizeof(uint8_t);
 
+        case NETOPT_PREAMBLE_DETECT_SIZE:
+            assert(max_len >= sizeof(uint8_t));
+            *((uint8_t*) val) = xcvr_get_preamble_detector_size(dev);
+            return sizeof(uint8_t);
+
         case NETOPT_PREAMBLE_POLARITY:
             assert(max_len >= sizeof(uint8_t));
             *((uint8_t*) val) = xcvr_get_preamble_polarity(dev);
@@ -489,6 +494,11 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
         case NETOPT_PREAMBLE_LENGTH:
             assert(len <= sizeof(uint8_t));
             xcvr_set_preamble_length(dev, *((const uint8_t*) val));
+            return sizeof(uint8_t);
+
+        case NETOPT_PREAMBLE_DETECT_SIZE:
+            assert(len <= sizeof(uint8_t));
+            xcvr_set_preamble_detector_size(dev, *((const uint8_t*) val));
             return sizeof(uint8_t);
 
         case NETOPT_PREAMBLE_POLARITY:
