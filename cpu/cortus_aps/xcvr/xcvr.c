@@ -193,7 +193,7 @@ void xcvr_init_radio_settings(ciot25_xcvr_t *dev)
                            XCVR_CODEC_PACKET_CONFIG_SYNC_MODE_ENABLE;//DISABLE;
 
     codec->detector_config = XCVR_CODEC_DETECTOR_CONFIG_SELECTION |
-                             XCVR_CODEC_DETECTOR_CONFIG_PREAMBLE_THRESHOLD |
+                             XCVR_CODEC_DETECTOR_CONFIG_PREAMBLE_THRESHOLD_16 |
                              XCVR_CODEC_DETECTOR_CONFIG_SYNC_THRESHOLD |
                              XCVR_CODEC_DETECTOR_CONFIG_PREAMBLE_TIMEOUT_OFF |
                              XCVR_CODEC_DETECTOR_CONFIG_SYNC_TIMEOUT_OFF |
