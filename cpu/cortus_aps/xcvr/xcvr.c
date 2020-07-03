@@ -172,16 +172,10 @@ void xcvr_init_radio_settings(ciot25_xcvr_t *dev)
                           XCVR_BASEBAND_DM_CONFIG_DEMULATOR_OUT_9V6 |
                           XCVR_BASEBAND_DM_CONFIG_MODULATION_SHAPING_20;
 
-    baseband->cdr_config1 = XCVR_BASEBAND_CDR_CONFIG1_K_GAIN_ON |
-                            XCVR_BASEBAND_CDR_CONFIG2_KP_GAIN_DIR |
-                            XCVR_BASEBAND_CDR_CONFIG2_KI_SHIFT_VALUE |
-                            XCVR_BASEBAND_CDR_CONFIG2_KP_SHIFT_VALUE |
-                            XCVR_BASEBAND_CDR_CONFIG1_PREAMBLE_LENGTH_VALUE |
-                            XCVR_BASEBAND_CDR_CONFIG2_ADJUSTEMENT_ON |
-                            XCVR_BASEBAND_CDR_CONFIG2_GL_FILT_ON;
+    baseband->cdr_config1 = XCVR_BASEBAND_CDR_CONFIG2_GL_FILT_ON;
 
-    baseband->cdr_config2 = XCVR_BASEBAND_CDR_CONFIG2_KP_VALUE |
-                            XCVR_BASEBAND_CDR_CONFIG2_KI_VALUE;
+//    baseband->cdr_config2 = XCVR_BASEBAND_CDR_CONFIG2_KP_VALUE |
+//                            XCVR_BASEBAND_CDR_CONFIG2_KI_VALUE;
 
     codec->packet_config = XCVR_CODEC_PACKET_CONFIG_SYNC_TWO_BYTES |
                            XCVR_CODEC_PACKET_CONFIG_PREAMBLE_LENGTH_128_BITS |
