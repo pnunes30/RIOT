@@ -36,6 +36,8 @@
 #define ENABLE_DEBUG (0)
 #include "debug.h"
 
+#define RX_WITH_IRQ_NOT_EMPTY 1
+
 typedef struct
 {
     const char *name; /**< Name of the register*/
@@ -457,7 +459,7 @@ void xcvr_restart_rx_chain(ciot25_xcvr_t *dev)
 
     xtimer_usleep(1000);
 
-    // RECVEIVER MODE --> so we can flush any bytes that are not supposed to be here
+    // RECEIVER MODE --> so we can flush any bytes that are not supposed to be here
     xcvr->op_mode = 0x2;
     //xcvr_set_op_mode(dev, XCVR_OPMODE_RECEIVER);
 
@@ -478,7 +480,12 @@ void xcvr_restart_rx_chain(ciot25_xcvr_t *dev)
     DEBUG("XCVR status: %08x\n", xcvr->status);
     DEBUG("DIF  status: %08x\n\n", dif->rx_status);
 
-    xcvr->mask = XCVR_PAYLOAD_READY; // | XCVR_PREAMBLE_DETECTION_IN_PROGRESS;
+#if defined RX_WITH_IRQ_NOT_EMPTY
+    dif->rx_mask = XCVR_DATA_IF_RX_NOT_EMPTY;
+#else
+    xcvr->mask = XCVR_PAYLOAD_READY;
+#endif
+
     //xcvr->mask = ((xcvr->mask) & XCVR_SYNC_TIMEOUT_MASK) | XCVR_SYNC_TIMEOUT;
     /*
     if (dev->options & XCVR_OPT_TELL_RX_END)
@@ -542,8 +549,12 @@ void xcvr_set_rx(ciot25_xcvr_t *dev)
 
     if (dev->options & XCVR_OPT_TELL_RX_END)
     {
+#if defined RX_WITH_IRQ_NOT_EMPTY
+        dif->rx_mask = XCVR_DATA_IF_RX_NOT_EMPTY;
+#else
         xcvr->mask = XCVR_PAYLOAD_READY; // | XCVR_PREAMBLE_DETECTION_IN_PROGRESS;
         //xcvr->mask = ((xcvr->mask) & XCVR_SYNC_TIMEOUT_MASK) | XCVR_SYNC_TIMEOUT;
+#endif
     }
     else
     {
@@ -614,7 +625,7 @@ void xcvr_set_op_mode(const ciot25_xcvr_t *dev, uint8_t op_mode)
         DEBUG("[xcvr] Set op mode: RECEIVER\n");
         break;
     case XCVR_OPMODE_TRANSMITTER:
-        DEBUG("[xcvr] Set op mode: TRANSMITTER\n");
+        //DEBUG("[xcvr] Set op mode: TRANSMITTER\n");
         radio->tx_cfg |= XCVR_RADIO_TX_CONFIG_TRANSMISSION_ENABLE;
         break;
     default:

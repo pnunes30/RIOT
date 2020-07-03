@@ -25,7 +25,7 @@
 #include "periph_cpu.h"
 
 #include "hwradio.h"
-#include "hwcounter.h"
+#include "machine/counter.h"
 #include "hwsystem.h"
 #include "debug.h"
 
@@ -59,6 +59,10 @@ static void log_print_data(uint8_t* message, uint32_t length)
     }
 }
 #endif
+
+#define FREQ_CPU 32 // 32 MHz
+#define FILL_WITH_COUNTER 1
+#define RX_WITH_IRQ_NOT_EMPTY 1
 
 /* Internal helper functions */
 static int _set_state(ciot25_xcvr_t *dev, netopt_state_t state);
@@ -117,9 +121,12 @@ static void dump_register(void)
         DEBUG("RADIO ADDR %2X DATA %08X", add, *add);
 
     DEBUG("\r\nSFRADR_DATA_IF register");
-     for (uint32_t *add = SFRADR_DATA_IF; add <= SFRADR_DATA_IF + 0x24; add++)
+    for (uint32_t *add = SFRADR_DATA_IF; add <= SFRADR_DATA_IF + 0x24; add++)
         DEBUG("DATA_IF ADDR %2X DATA %08X", add, *add);
 
+    DEBUG("\r\nSFRADR_ANALOG_CTL register");
+    for (unsigned int *add = SFRADR_ANALOG_CTL; add <= SFRADR_ANALOG_CTL + 248; add++)
+        DEBUG("ANALOG CTL ADDR %2X DATA %08X", add, *add);
 
     // Please note that when reading the first byte of the FIFO register, this
     // byte is removed so the dump is not recommended before a TX or take care
@@ -128,7 +135,65 @@ static void dump_register(void)
     DEBUG("**********************************************************");
 }
 
+void parse_xcvr_status(unsigned int status)
+{
+/*	 *      24:    Bypass Tx done           1 if bypass finishes transmission (cleared when exiting Tx mode)
+	   *      23:    Bypass Tx almost done    1 if bypass almost finishes transmission (cleared when exiting Tx mode)
+	   *      22:    Tx done                  1 if modem finishes transmission (cleared when exiting Tx mode)
+	   *      21:    AGC_FE                   1 if AGC FE stage is enabled
+	   *      20:    AGC_IF                   1 if AGC IF stage is enabled
+	   *      19:    AFC_timeout              1 if AFC timeout is reached
+	   *      18:    IQ_comp_rdy              1 if IQ imbalance compensation calibration done
+	   *      17:    RSSI_inst_hi_level       1 if inst_RSSI value is higher than the threshold
+	   *      16:    RSSI_inst_lo_level       1 if inst_RSSI value is smaller than the threshold
+	   *      15:    RSSI_mean_hi_level       1 if mean_RSSI value is higher than the threshold
+	   *      14:    RSSI_mean_lo_level       1 if mean_RSSI value is smaller than the threshold
+	   *      13:    RSSI_timeout             1 if RSSI timeout is reached (cleared when leaving RX)
+	   *      12:    RSSI_mean_ready          1 if a mean RSSI value is ready (cleared when leaving RX)
+	   *      11:    RSSI_inst_ready          1 if an instant RSSI value is ready (cleared when leaving RX)
+	   *      10:    RSSI_latch_ready         1 if the latched RSSI values are ready (cleared when leaving RX)
+	   *       9:    payload_data_in_progress 1 if Payload data sequence reading in progress
+	   *       8:    preamble_timeout         1 if Preamble sequence detection timeout is reached
+	   *       7:    preamble_det_in_progress 1 if Preamble sequence detection in progress
+	   *       6:    preamble_detected        1 if Preamble is detected (Number of detected Preamble symbols exceeds the threshold value)
+	   *       5:    sync_word_timeout        1 if Sync Word detection timeout is reached
+	   *       4:    sync_det_in_progress     1 if Sync Word detection in progress
+	   *       3:    sync_detected            1 if Sync Word is detected (number of matched bits greater or equal to threshold value)
+	   *       2:    Bypass Payload ready     1 if first bit of the payload is received via bypass (cleared when FIFO is empty)
+	   *       1:    CRC_valid                1 if received CRC is valid
+	   *       0:    Payload ready            1 if last byte of the payload is received (cleared when FIFO is empty) */
 
+    DEBUG("\r\n[xcvr] XCVR status: %08x\r\n", status);
+    if (status & XCVR_PAYLOAD_READY)
+        DEBUG("Payload ready|");
+    if (status & XCVR_CRC_VALID_ON)
+        DEBUG("CRC VALID|");
+    if (status & XCVR_SYNC_TIMEOUT)
+        DEBUG("SYNC TIMEOUT|");
+    if (status & XCVR_SYNC_DETECTED)
+        DEBUG("SYNC DETECTED|");
+    if (status & XCVR_PREAMBLE_DETECTED)
+        DEBUG("PREAMBLE_DETECTED|");
+    if (status & XCVR_PREAMBLE_DETECTION_IN_PROGRESS)
+       DEBUG("PREAMBLE_DETECTING|");
+
+    //printf("\r\n");
+}
+
+static void hw_counter_init(unsigned short time_usecond)
+{
+    unsigned int start_value_counter1 = (time_usecond * FREQ_CPU);
+
+    counter1->reload = start_value_counter1;
+    counter1->value = start_value_counter1;
+    counter1->expired = 0;
+
+}
+
+static unsigned hw_counter_is_expired()
+{
+    return (counter1->expired);
+}
 
 
 static int _send(netdev_t *netdev, const iolist_t *iolist)
@@ -166,6 +231,10 @@ static int _send(netdev_t *netdev, const iolist_t *iolist)
     dif->tx_thr = XCVR_DATA_IF_TX_THRESHOLD;
     //xcvr_flush_tx_fifo();
 
+    // STOP Rssi if not coming from interrupt so RSSI all measurements are reset
+    if((baseband->rssi_config & 0x1) == 0x1)
+        baseband->rssi_config &= ~0x1;
+
     dev->packet.length = size;
 
     codec->packet_config = (codec->packet_config & XCVR_CODEC_PACKET_CONFIG_LEN_MASK) | XCVR_CODEC_PACKET_CONFIG_LEN_FIX;
@@ -177,23 +246,37 @@ static int _send(netdev_t *netdev, const iolist_t *iolist)
 
         memcpy((void*)dev->packet.buf, iolist->iol_base, size);
         /* Write payload buffer */
+#if FILL_WITH_COUNTER == 1
+        xcvr_write_fifo(dev, dev->packet.buf, XCVR_DATA_IF_TX_THRESHOLD);
+        dev->packet.pos = XCVR_DATA_IF_TX_THRESHOLD;
+
+        //TODO set the counter according the bitrate
+        hw_counter_init(1440); // 1440µs = 10 bytes (144µs per byte at 55.555kbps)
+        counter1->mask = 1;
+#else
         xcvr_write_fifo(dev, dev->packet.buf, XCVR_FIFO_MAX_SIZE);
 
         dev->packet.pos = XCVR_FIFO_MAX_SIZE;
         dif->tx_mask = XCVR_DATA_IF_TX_ALMOST_EMPTY;
+#endif
     }
     else
     {
         dev->packet.pos = size;
         if (dev->options & XCVR_OPT_TELL_TX_REFILL) // we expect to refill the FIFO with subsequent data
         {
-            dif->tx_thr = 20; // FIFO level interrupt if under 20 bytes
-            dev->packet.fifothresh = 20;
+            dif->tx_thr = XCVR_DATA_IF_TX_THRESHOLD; // FIFO level interrupt if under 20 bytes
+            dev->packet.fifothresh = XCVR_DATA_IF_TX_THRESHOLD;
             codec->packet_config = (codec->packet_config & XCVR_CODEC_PACKET_CONFIG_LEN_MASK) | XCVR_CODEC_PACKET_CONFIG_LEN_INFI;
             xcvr_write_fifo(dev, iolist->iol_base, size);
 
-            dif->tx_mask = XCVR_DATA_IF_TX_ALMOST_EMPTY;
-
+#if FILL_WITH_COUNTER == 1
+            // refill the fifo when less than 10bytes remains in the FIFO
+            hw_counter_init(144 * (size-10)); // 144µs per byte at 55.555kbps
+            counter1->mask = 1;
+#else
+            dif->tx_mask = XCVR_DATA_IF_TX_ALMOST_EMPTY; // the frame length shall be > XCVR_DATA_IF_TX_THRESHOLD !!
+#endif
         }
         else
         {
@@ -272,8 +355,11 @@ static int _init(netdev_t *netdev)
     aps_irq[IRQ_DATA_IF_TX].ipl = 0;
     aps_irq[IRQ_DATA_IF_TX].ien = 1;
 
-    //aps_irq[IRQ_DATA_IF_RX].ipl = 0;
-    //aps_irq[IRQ_DATA_IF_RX].ien = 1;
+    aps_irq[IRQ_DATA_IF_RX].ipl = 0;
+    aps_irq[IRQ_DATA_IF_RX].ien = 1;
+
+    aps_irq[IRQ_COUNTER1].ipl = 0;
+    aps_irq[IRQ_COUNTER1].ien = 1;
 
     DEBUG("[xcvr] init_radio: xcvr initialization done\n");
     init_done = true;
@@ -627,6 +713,10 @@ static void fill_in_fifo(ciot25_xcvr_t *dev)
     uint8_t remaining_bytes = dev->packet.length - dev->packet.pos;
     uint8_t space_left = XCVR_FIFO_MAX_SIZE - dev->packet.fifothresh;
 
+#if FILL_WITH_COUNTER == 1
+    space_left = 10; // counter is based on 10 bytes TX duration
+#endif
+
     if (remaining_bytes == 0) // means that we need to ask the upper layer to refill the fifo
     {
         netdev_t *netdev = (netdev_t*) &dev->netdev;
@@ -643,26 +733,36 @@ static void fill_in_fifo(ciot25_xcvr_t *dev)
 
     if (remaining_bytes > space_left)
     {
-        dev->packet.pos += space_left;
-
         // clear the interrupt
         dif->tx_thr = XCVR_DATA_IF_TX_THRESHOLD;
         dev->packet.fifothresh = XCVR_DATA_IF_TX_THRESHOLD;
         xcvr_write_fifo(dev, &dev->packet.buf[dev->packet.pos], space_left);
 
         dev->packet.pos += space_left;
-
+#if FILL_WITH_COUNTER == 0
         // set the interrupt
         dif->tx_mask |=  XCVR_DATA_IF_TX_ALMOST_EMPTY;
+#endif
     }
     else
     {
         xcvr_write_fifo(dev, &dev->packet.buf[dev->packet.pos], remaining_bytes);
         dev->packet.pos += remaining_bytes;
 
+#if FILL_WITH_COUNTER == 1
+        counter1->mask = 0;
+        counter1->reload = 0;
+        counter1->value = 0;
+#endif
+
         if (dev->options & XCVR_OPT_TELL_TX_REFILL)
         {
+#if FILL_WITH_COUNTER == 1
+            hw_counter_init(144 * (remaining_bytes-10)); // 144µs per byte at 55.555kbps
+            counter1->mask = 1;
+#else
             dif->tx_mask = (dif->tx_mask & ~XCVR_DATA_IF_TX_ALMOST_EMPTY) | XCVR_DATA_IF_TX_ALMOST_EMPTY;
+#endif
         }
         else
         {
@@ -685,6 +785,26 @@ void xcvr_isr(netdev_t *dev, xcvr_flags_t flag)
     }
 }
 
+void interrupt_handler(IRQ_COUNTER1)
+{
+    ciot25_xcvr_t *dev = &xcvr_ressource.ciot25_xcvr;
+
+    assert(dev->settings.state == XCVR_RF_TX_RUNNING);
+
+    counter1->expired = 0;
+    if ((dif->tx_status & XCVR_DATA_IF_TX_FULL) || (dif->tx_status & XCVR_DATA_IF_TX_OVERRUN))
+    {
+        counter1->mask = 0;
+        counter1->reload = 0;
+        counter1->value = 0;
+        DEBUG("[xcvr] FULL !!!!! tx_status = %02x", dif->tx_status);
+        return;
+    }
+
+    fill_in_fifo(dev);
+}
+
+
 void interrupt_handler(IRQ_DATA_IF_TX)
 {
     __enter_isr();
@@ -702,6 +822,40 @@ void interrupt_handler(IRQ_DATA_IF_TX)
     __exit_isr();
 }
 
+#if defined RX_WITH_IRQ_NOT_EMPTY
+void interrupt_handler(IRQ_DATA_IF_RX)
+{
+    ciot25_xcvr_t *dev = &xcvr_ressource.ciot25_xcvr;
+    netdev_t *netdev = (netdev_t*) &dev->netdev;
+
+    dif->rx_mask = 0;
+
+    dev->packet.buf[dev->packet.pos++] = dif->rx_data;
+
+    // Read status, read data and read status again
+    if (dev->packet.length == 0)
+    {
+        dev->packet.length = dev->packet.buf[0] + 1;
+        DEBUG("\n\rIRQ! %d", dev->packet.length);
+    }
+
+    // Signal an error on full/overrun/underrun and flush the fifo
+    // to repeat measurements until the data size limit is reached
+    /*if (dif->rx_status & (XCVR_DATA_IF_RX_FULL | XCVR_DATA_IF_RX_UNDERRUN |
+                          XCVR_DATA_IF_RX_OVERRUN)){
+      DEBUG("\n\rERROR!!!");
+      dif->rx_flush = 1;
+      return;
+    }*/
+
+    if (dev->packet.pos == dev->packet.length)
+    {
+        xcvr_isr((netdev_t *)dev, IRQ_XCVR_RX);
+    }
+    else
+        dif->rx_mask = XCVR_DATA_IF_RX_NOT_EMPTY;
+}
+#else
 void interrupt_handler(IRQ_DATA_IF_RX)
 {
     __enter_isr();
@@ -714,6 +868,7 @@ void interrupt_handler(IRQ_DATA_IF_RX)
     xcvr_isr((netdev_t *)dev, IRQ_DATA_IF_RX);
     __exit_isr();
 }
+#endif
 
 void interrupt_handler(IRQ_XCVR_TX)
 {
@@ -734,8 +889,6 @@ void interrupt_handler(IRQ_XCVR_RX)
 {
     __enter_isr();
     ciot25_xcvr_t *dev = &xcvr_ressource.ciot25_xcvr;
-
-    uint32_t status;
 
     if (xcvr->status & XCVR_PREAMBLE_DETECTION_IN_PROGRESS)
         DEBUG("[xcvr] PRD in progress : %08x\n", xcvr->status);
@@ -764,6 +917,8 @@ void interrupt_handler(IRQ_XCVR_RX)
 
     xcvr_read_fifo(dev, &dev->packet.buf[dev->packet.pos], dev->packet.length - dev->packet.pos);
 
+    DEBUG("[xcvr] Nb Preamble : %08x\n", codec->preamble_det_ndet);
+
     xcvr_isr((netdev_t *)dev, IRQ_XCVR_RX);
     __exit_isr();
 }
@@ -791,6 +946,12 @@ void _on_xcvr_rx_interrupt(void *arg)
 
     //assert(xcvr->status & XCVR_PAYLOAD_READY);
 
+    DEBUG("\r\n________________________");
+    parse_xcvr_status(xcvr->status);
+
+    dev->packet.crc_status = HW_CRC_UNAVAILABLE;
+
+    DEBUG("[xcvr] Nb Preamble : %08x\n", codec->preamble_det_ndet);
     DEBUG("[xcvr] AFC offset: %08x\n", baseband->afc_offs);
 
     // STOP DEMODULATION PROCEDURE
@@ -809,8 +970,6 @@ void _on_xcvr_rx_interrupt(void *arg)
     // WARNING: Stop demodulation - this MUST come after RSSI is disabled
     baseband->dm_config &= ~0x01;
     // END STOP DEMODULATION PROCEDURE
-
-    DEBUG("[xcvr] Nb Preamble : %08x\n", codec->preamble_det_ndet);
 
     //if((dif->rx_status & 0x4) != 0x4)
     netdev->event_callback(netdev, NETDEV_EVENT_RX_COMPLETE);
