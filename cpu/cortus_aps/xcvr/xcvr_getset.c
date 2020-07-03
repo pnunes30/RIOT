@@ -521,7 +521,7 @@ void xcvr_set_rx(ciot25_xcvr_t *dev)
 //    hw_counter_init(1, 100, false);
 //    while(!hw_counter_is_expired(1));
 
-    //xtimer_usleep(1000);
+    xtimer_usleep(100);
 
     // RECVEIVER MODE --> so we can flush any bytes that are not supposed to be here
     xcvr->op_mode = 0x02;
@@ -535,7 +535,7 @@ void xcvr_set_rx(ciot25_xcvr_t *dev)
 //    hw_counter_init(1, 1000, false);
 //    while(!hw_counter_is_expired(1));
 
-    //xtimer_usleep(1000);
+    xtimer_usleep(1000);
 
     // ENABLE DEMODULATOR
     baseband->rssi_config &= ~0x2;
