@@ -10,6 +10,7 @@ ifeq (ciot25_demo_board,$(BOARD))
 ifeq (xcvr,$(DRIVER))
 DIRS += xcvr
 endif
+DIRS += flash
 endif
 DIRS += periph
 

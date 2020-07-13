@@ -15,6 +15,7 @@ CFLAGS += -Wno-format-nonliteral
 INCLUDES += -I$(RIOTCPU)/cortus_aps/include/
 INCLUDES += -I$(RIOTCPU)/cortus_aps/include/Bsp
 INCLUDES += -I$(RIOTCPU)/cortus_aps/xcvr/inc
+INCLUDES += -I$(RIOTCPU)/cortus_aps/flash/inc
 
 export LINKFLAGS += -L$(RIOTCPU)/cortus_aps/ldscripts
 ifeq (cortus_fpga,$(BOARD))
