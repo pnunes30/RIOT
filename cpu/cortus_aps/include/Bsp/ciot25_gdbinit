@@ -1,0 +1,64 @@
+set remotetimeout 600
+#tar remote:3333
+set *(0x40009000)=1
+#set *(0x40080000)=2
+
+# Xtal_bank and trim
+#set *(0x400e00a8)=0
+#set *(0x400e00ac)=0
+#set *(0x400e00b0)=0x7f
+#set *(0x400e00b4)=0x7f
+#set *(0x400e00c0)=0x8
+#set *(0x400e00c4)=0
+
+# dig ldo2 = 1.11V
+# set *(0x400e0014)=0x0
+#load
+#hbr *0x80000110
+#br main
+#br *0x81ee
+#br *0x81f6
+#br ciot25_flash_nvr_cfg_sect0_flash_trim.c:211
+#br ciot25_flash_nvr_cfg_sect0_flash_trim.c:210
+#br flash_loader.c:343
+#br flash_loader.c:396
+#br exit
+#br test_flash_cer_ser_pg_rd_from_dmem.c:138
+#br test_flash_cer_ser_pg_rd_from_dmem.c:202
+#br test_flash_cer_ser_pg_rd_from_dmem.c:261
+#br test_flash_cer_ser_pg_rd_from_dmem.c:320
+#br test_flash_cer_ser_pg_rd_from_dmem.c:379
+#br test_flash_cer_ser_pg_rd_from_dmem.c:402
+#br test_flash_cer_ser_pg_rd_from_dmem.c:423
+#br test_flash_cer_ser_pg_rd_from_dmem.c:438
+#br test_flash_cer_ser_pg_rd_from_dmem.c:453
+#br test_flash_cer_ser_pg_rd_from_dmem.c:468
+#br test_flash_cer_ser_pg_rd_from_dmem.c:755
+#br test_flash_cer_ser_pg_rd_from_dmem.c:370
+#br test_flash_cer_ser_pg_rd_from_dmem.c:373
+#br test_flash_cer_ser_pg_rd_from_dmem.c:375
+#br test_flash_cer_ser_pg_rd_from_dmem.c:379
+#c
+# tacc = 1 NB: put it after continue because of bootrom flash reg init
+# set *(0xa0000004)=0x60
+# set *(0xa0000000)=0x30
+#
+x 0x80000000
+x 0x80000000
+x 0x80000000
+x 0x80000000
+x 0x80000000
+x 0x8007fc00
+x 0x8007fc04
+x 0x8007fc08
+x 0x8007fc0c
+x 0x8007fc10
+x 0x8007fc14
+x 0x8007fc18
+x 0x8007fc1c
+
+#c
+
+#p i
+#q
+#y

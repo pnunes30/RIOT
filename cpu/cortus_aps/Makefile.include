@@ -20,7 +20,10 @@ export LINKFLAGS += -L$(RIOTCPU)/cortus_aps/ldscripts
 ifeq (cortus_fpga,$(BOARD))
 LINKER_SCRIPT = elf32aps.ld
 else
+#LINKER_SCRIPT = elf32aps.ld
 LINKER_SCRIPT = elf32aps_flash.x
+#LINKER_SCRIPT = elf32aps_flash_bank0.x
+#LINKER_SCRIPT = elf32aps_flash_bank1.x
 endif
 
 # Modules, to be moved to board's Makefile.include
