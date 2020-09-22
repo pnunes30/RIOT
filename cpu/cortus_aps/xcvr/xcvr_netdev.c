@@ -674,6 +674,7 @@ void xcvr_isr(netdev_t *dev, xcvr_flags_t flag)
 
 void interrupt_handler(IRQ_DATA_IF_TX)
 {
+    __enter_isr();
     ciot25_xcvr_t *dev = &xcvr_ressource.ciot25_xcvr;
 
     dif->tx_mask &= ~XCVR_DATA_IF_TX_ALMOST_EMPTY;
@@ -685,10 +686,12 @@ void interrupt_handler(IRQ_DATA_IF_TX)
         DEBUG("[xcvr] tx_status = %02x", dif->tx_status);
 
     //xcvr_isr((netdev_t *)dev, IRQ_DATA_IF_TX);
+    __exit_isr();
 }
 
 void interrupt_handler(IRQ_DATA_IF_RX)
 {
+    __enter_isr();
     ciot25_xcvr_t *dev = &xcvr_ressource.ciot25_xcvr;
 
     //DEBUG("[xcvr] IRQ_DATA_IF_RX rx_status %08x", dif->rx_status);
@@ -696,10 +699,12 @@ void interrupt_handler(IRQ_DATA_IF_RX)
     dif->rx_mask &= ~XCVR_DATA_IF_RX_ALMOST_FULL;
 
     xcvr_isr((netdev_t *)dev, IRQ_DATA_IF_RX);
+    __exit_isr();
 }
 
 void interrupt_handler(IRQ_XCVR_TX)
 {
+    __enter_isr();
     ciot25_xcvr_t *dev = &xcvr_ressource.ciot25_xcvr;
 
 	assert(dev->settings.state == XCVR_RF_TX_RUNNING);
@@ -709,10 +714,12 @@ void interrupt_handler(IRQ_XCVR_TX)
     timer_cancel_event(&dev->_internal.tx_timeout_timer);
 
     xcvr_isr((netdev_t *)dev, IRQ_XCVR_TX);
+    __exit_isr();
 }
 
 void interrupt_handler(IRQ_XCVR_RX)
 {
+    __enter_isr();
     ciot25_xcvr_t *dev = &xcvr_ressource.ciot25_xcvr;
 
     uint32_t status;
@@ -745,6 +752,7 @@ void interrupt_handler(IRQ_XCVR_RX)
     xcvr_read_fifo(dev, &dev->packet.buf[dev->packet.pos], dev->packet.length - dev->packet.pos);
 
     xcvr_isr((netdev_t *)dev, IRQ_XCVR_RX);
+    __exit_isr();
 }
 
 void _on_xcvr_tx_interrupt(void *arg)
