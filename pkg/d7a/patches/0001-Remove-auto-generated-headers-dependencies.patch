@@ -1,7 +1,7 @@
-From 73fc6f72692d08d7bd3bb1ec4ffcf3305d0a4c51 Mon Sep 17 00:00:00 2001
+From 6e4b01854038fbd119f75c17ccb390e0b67769ad Mon Sep 17 00:00:00 2001
 From: Philippe Nunes <philippe.nunes@cortus.com>
 Date: Wed, 1 Aug 2018 12:56:09 +0200
-Subject: [PATCH 01/11] Remove auto generated headers dependencies
+Subject: [PATCH 1/8] Remove auto generated headers dependencies
 
 To build only the D7A module, we need to remove in the D7A module and
 in the framework headers all the includes of headers generated during the
@@ -100,7 +100,7 @@ index f89dfcd..09bce1a 100644
  #include "hwsystem.h"
  #include <stdio.h>
 diff --git a/stack/framework/inc/fs.h b/stack/framework/inc/fs.h
-index 320bc8c..8430329 100644
+index 954e74d..7b0a313 100644
 --- a/stack/framework/inc/fs.h
 +++ b/stack/framework/inc/fs.h
 @@ -31,7 +31,6 @@
@@ -109,10 +109,10 @@ index 320bc8c..8430329 100644
  
 -#include "framework_defs.h"
  #include "dae.h"
- 
- #ifndef FRAMEWORK_FS_FILE_COUNT
+ #include "hwblockdevice.h"
+     
 diff --git a/stack/framework/inc/log.h b/stack/framework/inc/log.h
-index af8d388..92e6b86 100644
+index 58afc20..d06ef39 100644
 --- a/stack/framework/inc/log.h
 +++ b/stack/framework/inc/log.h
 @@ -38,7 +38,6 @@
@@ -157,7 +157,7 @@ index e0791e5..e7def54 100644
   *
   * This value can be configured by setting the 'FRAMEWORK_TIMER_RESOLUTION' CMake property
 diff --git a/stack/fs/d7ap_fs_data.c b/stack/fs/d7ap_fs_data.c
-index 80bc0cd..a3ff9dc 100644
+index b2368d9..0d93ae3 100644
 --- a/stack/fs/d7ap_fs_data.c
 +++ b/stack/fs/d7ap_fs_data.c
 @@ -20,7 +20,6 @@
@@ -169,7 +169,7 @@ index 80bc0cd..a3ff9dc 100644
  
  #ifdef MODULE_D7AP_FS_USE_DEFAULT_SYSTEMFILES
 diff --git a/stack/modules/d7ap/d7ap_stack.c b/stack/modules/d7ap/d7ap_stack.c
-index 24573ea..f56c2ca 100644
+index 033f608..ae8288e 100644
 --- a/stack/modules/d7ap/d7ap_stack.c
 +++ b/stack/modules/d7ap/d7ap_stack.c
 @@ -19,8 +19,6 @@
@@ -182,7 +182,7 @@ index 24573ea..f56c2ca 100644
  #include "errors.h"
  #include "debug.h"
 diff --git a/stack/modules/d7ap/phy.h b/stack/modules/d7ap/phy.h
-index 73ee2a7..9d787ac 100644
+index c6746d2..c374974 100644
 --- a/stack/modules/d7ap/phy.h
 +++ b/stack/modules/d7ap/phy.h
 @@ -32,10 +32,8 @@

@@ -1,7 +1,7 @@
-From 40b7e6d24ef55115c1dabb11c229c486402a4937 Mon Sep 17 00:00:00 2001
+From e82e8bb7145edb3a9832b5284450f547f9aedd75 Mon Sep 17 00:00:00 2001
 From: Matthieu Saignemorte <matthieu.saignemorte@cortus.com>
 Date: Fri, 26 Jul 2019 14:52:35 +0200
-Subject: [PATCH 08/11] Force origin Id in the response
+Subject: [PATCH 8/8] Force origin Id in the response
 
 ---
  stack/modules/d7ap/d7anp.c | 2 ++
@@ -9,10 +9,10 @@ Subject: [PATCH 08/11] Force origin Id in the response
  2 files changed, 4 insertions(+), 1 deletion(-)
 
 diff --git a/stack/modules/d7ap/d7anp.c b/stack/modules/d7ap/d7anp.c
-index 33efbf1..9128ae0 100644
+index 43a92e4..d2bc4e4 100644
 --- a/stack/modules/d7ap/d7anp.c
 +++ b/stack/modules/d7ap/d7anp.c
-@@ -649,6 +649,8 @@ bool d7anp_disassemble_packet_header(packet_t* packet, uint8_t *data_idx)
+@@ -657,6 +657,8 @@ bool d7anp_disassemble_packet_header(packet_t* packet, uint8_t *data_idx)
          {
              uint8_t origin_access_id_size = packet->d7anp_ctrl.origin_id_type == ID_TYPE_VID? 2 : 8;
              memcpy(packet->origin_access_id, packet->hw_radio_packet.data + (*data_idx), origin_access_id_size); (*data_idx) += origin_access_id_size;
@@ -22,7 +22,7 @@ index 33efbf1..9128ae0 100644
          else if (packet->d7anp_ctrl.origin_id_type == ID_TYPE_NBID)
          {
 diff --git a/stack/modules/d7ap/d7atp.c b/stack/modules/d7ap/d7atp.c
-index cdc4932..4efc02b 100644
+index 5669900..95a6a0b 100644
 --- a/stack/modules/d7ap/d7atp.c
 +++ b/stack/modules/d7ap/d7atp.c
 @@ -277,6 +277,7 @@ void d7atp_init()

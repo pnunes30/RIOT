@@ -1,37 +1,26 @@
-From ac453e7f22e7b99f319adffd5bb4b6b7ff6c9572 Mon Sep 17 00:00:00 2001
+From d3ad013fc1c539c99ee6e37b96a980c27b98cd46 Mon Sep 17 00:00:00 2001
 From: Philippe Nunes <philippe.nunes@cortus.com>
 Date: Fri, 3 Aug 2018 10:37:40 +0200
-Subject: [PATCH 02/11] Build only the D7A module
+Subject: [PATCH 2/8] Build only the D7A module
 
 ---
- stack/CMakeLists.txt | 23 ++++-------------------
- 1 file changed, 4 insertions(+), 19 deletions(-)
+ stack/CMakeLists.txt | 12 +++++-------
+ 1 file changed, 5 insertions(+), 7 deletions(-)
 
 diff --git a/stack/CMakeLists.txt b/stack/CMakeLists.txt
-index f841ca5..9c06190 100644
+index 115d083..c2df297 100644
 --- a/stack/CMakeLists.txt
 +++ b/stack/CMakeLists.txt
-@@ -54,19 +54,6 @@ INSERT_C_FLAGS(BEFORE -std=gnu99 -fno-common)
- #Retrieve the selected toolchain
- GET_CURRENT_TOOLCHAIN(TOOLCHAIN)
+@@ -67,7 +67,7 @@ ENDIF()
+ EXPORT_GLOBAL_INCLUDE_DIRECTORIES("${CMAKE_CURRENT_BINARY_DIR}/modules")
  
--SET(JLinkExe "JLinkExe")
--IF(CMAKE_HOST_WIN32)
--    SET(JLinkExe "jlink.exe")
--ENDIF()
--
--# set default platform
--IF(NOT PLATFORM)
--	SET(PLATFORM "B_L072Z_LRWAN1" CACHE STRING "Choose the platform to compile for.")
--ENDIF()
--
--#Then load the Framework
+ #Then load the Framework
 -ADD_SUBDIRECTORY("framework")
--
++#ADD_SUBDIRECTORY("framework")
+ 
  #Load the file with platform-specific build commands
  IF(EXISTS "${PROJECT_SOURCE_DIR}/cmake/platform_${PLATFORM}_macros.cmake")
-     include ("cmake/platform_${PLATFORM}_macros.cmake")
-@@ -74,14 +61,12 @@ ELSE()
+@@ -76,14 +76,12 @@ ELSE()
      include ("cmake/platform_default_macros.cmake")
  ENDIF()
  
