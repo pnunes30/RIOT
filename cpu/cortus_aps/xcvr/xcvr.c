@@ -33,12 +33,11 @@
 #include "errors.h"
 
 #include "hwsystem.h"
-//#include "platform.h"
 
-#include "debug.h"
 #define ENABLE_DEBUG 0
 
 #if ENABLE_DEBUG
+#include "debug.h"
 
 static void log_print_data(uint8_t* message, uint32_t length);
     #define DEBUG_DATA(...) log_print_data(__VA_ARGS__)
@@ -70,6 +69,7 @@ void xcvr_setup(ciot25_xcvr_t *dev)
 
 void xcvr_reset(const ciot25_xcvr_t *dev)
 {
+    (void)dev;
     //TODO
 }
 

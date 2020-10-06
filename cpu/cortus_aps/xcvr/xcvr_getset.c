@@ -25,7 +25,6 @@
 #include "periph_cpu.h"
 
 //#include "platform.h"
-#include "debug.h"
 #include "hwradio.h"
 #include "hwcounter.h"
 
@@ -215,6 +214,7 @@ void xcvr_set_state(ciot25_xcvr_t *dev, uint8_t state)
 
 void xcvr_set_register(ciot25_xcvr_t *dev, sfr_register_t *sfr_register)
 {
+    (void)dev;
     uint32_t *sfr_address = _get_addr(sfr_register->type, sfr_register->field);
 
     if (sfr_address)
@@ -228,6 +228,7 @@ void xcvr_set_register(ciot25_xcvr_t *dev, sfr_register_t *sfr_register)
 
 void xcvr_get_register(ciot25_xcvr_t *dev, sfr_register_t *sfr_register)
 {
+    (void)dev;
     uint32_t *sfr_address = _get_addr(sfr_register->type, sfr_register->field);
 
     if (sfr_address)
@@ -257,6 +258,7 @@ void xcvr_set_syncword_length(ciot25_xcvr_t *dev, uint8_t len)
 
 uint8_t xcvr_get_syncword(const ciot25_xcvr_t *dev, uint8_t *syncword, uint8_t sync_size)
 {
+    (void)dev;
     uint8_t size;
 
     size = ((codec->packet_config & ~XCVR_CODEC_PACKET_CONFIG_SYNC_LEN_MASK) >> 16) + 1;
@@ -364,6 +366,7 @@ unsigned int round_div (int clk, int bitrate) {
 
 uint32_t xcvr_get_channel(const ciot25_xcvr_t *dev)
 {
+    (void)dev;
     return compute_freq_carrier(xcvr->freq_carrier);
 }
 
@@ -579,6 +582,7 @@ void xcvr_set_tx(ciot25_xcvr_t *dev)
 
 uint8_t xcvr_get_max_payload_len(const ciot25_xcvr_t *dev)
 {
+    (void)dev;
     return codec->packet_len;
 }
 
@@ -593,12 +597,14 @@ void xcvr_set_max_payload_len(ciot25_xcvr_t *dev, uint16_t maxlen)
 
 uint8_t xcvr_get_op_mode(const ciot25_xcvr_t *dev)
 {
+    (void)dev;
     return (xcvr->op_mode & ~XCVR_OPMODE_MASK);
 }
 
 void xcvr_set_op_mode(const ciot25_xcvr_t *dev, uint8_t op_mode)
 {
     assert (op_mode < 8);
+    (void)dev;
 
     switch(op_mode) {
     case XCVR_OPMODE_STANDBY:
@@ -639,12 +645,14 @@ void xcvr_set_op_mode(const ciot25_xcvr_t *dev, uint8_t op_mode)
 
 bool xcvr_get_crc(const ciot25_xcvr_t *dev)
 {
+    (void)dev;
     return (bool)((codec->packet_config & XCVR_CODEC_PACKET_CONFIG_CRC_ON) >> 3);
 }
 
 void xcvr_set_crc(ciot25_xcvr_t *dev, bool crc)
 {
     DEBUG("[xcvr] Set CRC: %d\n", crc);
+    (void)dev;
  /* packet config
     *     bit 3 rw CRC16 Enable
     *           0: Off (default)
@@ -654,11 +662,13 @@ void xcvr_set_crc(ciot25_xcvr_t *dev, bool crc)
 
 uint8_t xcvr_get_payload_length(const ciot25_xcvr_t *dev)
 {
+    (void)dev;
     return codec->packet_len;
 }
 
 void xcvr_set_payload_length(ciot25_xcvr_t *dev, uint8_t len)
 {
+    (void)dev;
     DEBUG("[xcvr] Set payload len: %d\n", len);
 
     codec->packet_len = len;
@@ -720,6 +730,7 @@ void xcvr_set_preamble_detector_size(ciot25_xcvr_t *dev, uint8_t size)
 
 uint8_t xcvr_get_preamble_detector_size(ciot25_xcvr_t *dev)
 {
+    (void)dev;
     uint8_t size = (uint8_t)((codec->detector_config & 0xFF) >> 1) ;
 
     DEBUG("[xcvr] Get preamble detector size (symbols): %d\n", size);
@@ -742,6 +753,7 @@ void xcvr_set_tx_timeout(ciot25_xcvr_t *dev, uint32_t timeout)
 
 uint32_t xcvr_get_bitrate(const ciot25_xcvr_t *dev)
 {
+    (void)dev;
     uint32_t br = (xcvr->bitrate) * 100; // Bitrate given in hundreds of bps
 
     return br ;
@@ -750,6 +762,7 @@ uint32_t xcvr_get_bitrate(const ciot25_xcvr_t *dev)
 void xcvr_set_bitrate(ciot25_xcvr_t *dev, uint32_t bps)
 {
     uint32_t rate_md;
+    (void)dev;
 
     DEBUG("[xcvr] Set bitrate register to %i", bps / 100);
     xcvr->bitrate  = (bps / 100); //  hundreds of bps
@@ -793,6 +806,8 @@ void xcvr_set_bitrate(ciot25_xcvr_t *dev, uint32_t bps)
 uint8_t xcvr_get_preamble_polarity(const ciot25_xcvr_t *dev)
 {
     uint8_t polarity =  (codec->packet_config & ~XCVR_CODEC_PACKET_CONFIG_PREAMBLE_POLARITY_MASK);
+    (void)dev;
+
     if (polarity)
         DEBUG("[xcvr] Polarity set to 0x55");
     else
@@ -802,17 +817,22 @@ uint8_t xcvr_get_preamble_polarity(const ciot25_xcvr_t *dev)
 
 void xcvr_set_preamble_polarity(ciot25_xcvr_t *dev, bool polarity)
 {
+    (void)dev;
+
     codec->packet_config = ((codec->packet_config & XCVR_CODEC_PACKET_CONFIG_PREAMBLE_POLARITY_MASK) | (polarity << 6));
     DEBUG("[xcvr] Polarity set to 0x55");
 }
 
 void xcvr_set_rssi_threshold(ciot25_xcvr_t *dev, uint8_t rssi_thr)
 {
+    (void)dev;
+
     baseband->rssi_threshold = rssi_thr;
 }
 
 uint8_t xcvr_get_rssi_threshold(const ciot25_xcvr_t *dev)
 {
+    (void)dev;
     return baseband->rssi_threshold;
 }
 
@@ -822,6 +842,7 @@ void xcvr_set_rssi_smoothing(ciot25_xcvr_t *dev, uint8_t rssi_samples)
      * Set the number of averages  = 2 exp (RSSI_naver + 1)
      */
     uint8_t rssi_naver = 0;
+    (void)dev;
 
     if (rssi_samples < 2)
         rssi_samples = 2;
@@ -843,16 +864,20 @@ void xcvr_set_rssi_smoothing(ciot25_xcvr_t *dev, uint8_t rssi_samples)
 uint8_t xcvr_get_rssi_smoothing(const ciot25_xcvr_t *dev)
 {
     uint8_t rssi_naver = (baseband->rssi_config & ~XCVR_BASEBAND_RSSI_CONFIG_NUM_AVERAGES_MASK) >> 2;
+    (void)dev;
+
     return (1 << (1 + rssi_naver));
 }
 
 void xcvr_set_sync_preamble_detect_on(ciot25_xcvr_t *dev, bool enable)
 {
+    (void)dev;
     codec->packet_config = (codec->packet_config & XCVR_CODEC_PACKET_CONFIG_SYNC_MODE_MASK) | enable;
 }
 
 uint8_t xcvr_get_sync_preamble_detect_on(const ciot25_xcvr_t *dev)
 {
+    (void)dev;
     return (codec->packet_config & ~XCVR_CODEC_PACKET_CONFIG_SYNC_MODE_MASK);
 }
 
@@ -863,11 +888,15 @@ uint8_t xcvr_get_sync_preamble_detect_on(const ciot25_xcvr_t *dev)
 void xcvr_set_dc_free(ciot25_xcvr_t *dev, uint8_t encoding_scheme)
 {
     DEBUG("[xcvr] Set DC free %d", encoding_scheme);
+    (void)dev;
+
     codec->packet_config = ((codec->packet_config & XCVR_CODEC_PACKET_CONFIG_PN9_MASK) | (encoding_scheme ? 1 : 0) << 5);
 }
 
 uint8_t xcvr_get_dc_free(const ciot25_xcvr_t *dev)
 {
+    (void)dev;
+
     if ((codec->packet_config & ~XCVR_CODEC_PACKET_CONFIG_PN9_MASK) >> 5)
         return HW_DC_FREE_WHITENING;
     else
@@ -876,12 +905,15 @@ uint8_t xcvr_get_dc_free(const ciot25_xcvr_t *dev)
 
 void xcvr_set_fec_on(ciot25_xcvr_t *dev, bool enable)
 {
+    (void)dev;
     DEBUG("[xcvr] Set FEC %d", enable);
+
     codec->packet_config = (codec->packet_config & XCVR_CODEC_PACKET_CONFIG_FEC_MASK) | (enable << 4);
 }
 
 uint8_t xcvr_get_fec_on(const ciot25_xcvr_t *dev)
 {
+    (void)dev;
     return (codec->packet_config & ~XCVR_CODEC_PACKET_CONFIG_FEC_MASK);
 }
 
@@ -928,6 +960,8 @@ void computeFdevMantExp(uint32_t fdev, uint8_t* mantisse, uint8_t* exponent)
 void xcvr_set_tx_fdev(ciot25_xcvr_t *dev, uint32_t fdev)
 {
     uint8_t mantissa, exponent;
+    (void)dev;
+
     computeFdevMantExp(fdev, &mantissa, &exponent);
     /*Frequency Deviation, rw
        *  bits 23:16   Offset
@@ -947,6 +981,7 @@ uint32_t xcvr_get_tx_fdev(const ciot25_xcvr_t *dev)
     uint8_t mantissa = (uint8_t)fdev;
     uint8_t exponent = (uint8_t)(fdev >> 8);
     uint8_t vco_div = (radio->rx_cfg & ~XCVR_RADIO_RX_CONFIG_VCO_DIVIDER_MASK) ? 4 : 2;
+    (void)dev;
 
     DEBUG("[xcvr] Get Frequency deviation offset %d Exponent %d Mantissa %d", XCVR_OFFSET_FREQ_DEV, exponent, mantissa);
     // fdev = (fosc / 2e17) * ( 8 + deviation_m) * 2eExponent
@@ -961,6 +996,7 @@ void xcvr_set_modulation_shaping(ciot25_xcvr_t *dev, uint8_t shaping)
      * 1 =   GFSK with Gaussian filter B=0.5
      */
     DEBUG("[xcvr] modulation_shaping set to %d", shaping);
+    (void)dev;
 
     if (shaping){
         xcvr->clkgen_en = XCVR_CLKGEN_DIS;
@@ -979,6 +1015,7 @@ void xcvr_set_modulation_shaping(ciot25_xcvr_t *dev, uint8_t shaping)
 uint8_t xcvr_get_modulation_shaping(const ciot25_xcvr_t *dev)
 {
     uint8_t modulation_shaping = ((xcvr->op_mode) & ~XCVR_OPMODE_MODULATION_TYPE_MASK) >> 3 ;
+    (void)dev;
 
     if (modulation_shaping)
         DEBUG("Gaussian filter BT = 0.5");
@@ -990,6 +1027,7 @@ uint8_t xcvr_get_modulation_shaping(const ciot25_xcvr_t *dev)
 
 void xcvr_set_pll(ciot25_xcvr_t *dev, bool enable)
 {
+    (void)dev;
     if(dev->settings.state != XCVR_RF_TX_RUNNING){
         if(enable)
             xcvr->freq_dev = 0x00000000;

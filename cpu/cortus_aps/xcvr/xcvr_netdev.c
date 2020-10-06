@@ -27,7 +27,6 @@
 #include "hwradio.h"
 #include "machine/counter.h"
 #include "hwsystem.h"
-#include "debug.h"
 
 //#include "machine/xcvr.h"
 //#include "machine/ic.h"
@@ -44,6 +43,7 @@
 #define ENABLE_DEBUG (0)
 
 #if ENABLE_DEBUG
+#include "debug.h"
 static void log_print_data(uint8_t* message, uint32_t length);
     #define DEBUG_DATA(...) log_print_data(__VA_ARGS__)
 #else
@@ -190,7 +190,7 @@ static void hw_counter_init(unsigned short time_usecond)
 
 }
 
-static unsigned hw_counter_is_expired()
+static unsigned hw_counter_is_expired(void)
 {
     return (counter1->expired);
 }
@@ -826,7 +826,6 @@ void interrupt_handler(IRQ_DATA_IF_TX)
 void interrupt_handler(IRQ_DATA_IF_RX)
 {
     ciot25_xcvr_t *dev = &xcvr_ressource.ciot25_xcvr;
-    netdev_t *netdev = (netdev_t*) &dev->netdev;
 
     dif->rx_mask = 0;
 

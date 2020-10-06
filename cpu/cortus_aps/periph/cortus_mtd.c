@@ -75,7 +75,7 @@ typedef struct {
 
 
 static uint8_t aps_dummy_mtd0[PAGE_PER_SECTOR * PAGE_SIZE * SECTOR_COUNT] __attribute__((section(".noinit")));
-static uint8_t aps_dummy_mtd1[PAGE_PER_SECTOR * PAGE_SIZE * SECTOR_COUNT] __attribute__((section(".noinit")));
+//static uint8_t aps_dummy_mtd1[PAGE_PER_SECTOR * PAGE_SIZE * SECTOR_COUNT] __attribute__((section(".noinit")));
 
 
 static int _init(mtd_dev_t *dev)
