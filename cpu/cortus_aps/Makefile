@@ -6,10 +6,11 @@
 MODULE = cpu
 # add a list of subdirectories, that should also be build
 
-ifeq (cortus_fpga,$(BOARD))
-DIRS = periph
-else
-DIRS = periph xcvr
+ifeq (ciot25_demo_board,$(BOARD))
+ifeq (xcvr,$(DRIVER))
+DIRS += xcvr
 endif
+endif
+DIRS += periph
 
 include $(RIOTBASE)/Makefile.base
