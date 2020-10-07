@@ -25,6 +25,7 @@
 
 #include "d7a/timer.h"
 #include "framework/inc/d7ap.h"
+#include "framework/inc/d7ap_fs.h"
 
 #include "d7a_netdev.h"
 #include "net/gnrc/netif.h"
@@ -152,6 +153,9 @@ static void *_d7a_event_loop(void *arg) {
     msg_init_queue(_queue, D7A_QUEUE_LEN);
     netdev_t *dev;
     msg_t msg;
+
+    /* init d7a FS */
+    d7ap_fs_init();
 
     /* init d7a */
     d7ap_init(); 
