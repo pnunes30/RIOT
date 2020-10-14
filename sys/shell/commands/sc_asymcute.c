@@ -551,18 +551,24 @@ static int _cmd_topics(int argc, char **argv)
 
     puts("--- Predefined Topics list ---");
     printf("                            topics ID\n"
-           "                          node_1 | node_2\n"
-           "shadow/update           : pre_10 | pre_50\n"
-           "shadow/update/rejected  : pre_11 | pre_51\n"
-           "shadow/update/accepted  : pre_12 | pre_52\n"
-           "shadow/update/documents : pre_13 | pre_53\n"
-           "shadow/update/delta     : pre_14 | pre_54\n"
-           "shadow/get              : pre_20 | pre_60\n"
-           "shadow/get/rejected     : pre_21 | pre_61\n"
-           "shadow/get/accepted     : pre_22 | pre_62\n"
-           "shadow/delete           : pre_30 | pre_70\n"
-           "shadow/delete/rejected  : pre_31 | pre_71\n"
-           "shadow/delete/accepted  : pre_32 | pre_72\n");
+           "                          node_0 | node_1  | node_2 \n"
+           "AWS Services topics\n"
+           "shadow/update           : pre_1  | pre_100 | pre_200\n"
+           "shadow/update/rejected  : pre_2  | pre_101 | pre_201\n"
+           "shadow/update/accepted  : pre_3  | pre_102 | pre_202\n"
+           "shadow/update/documents : pre_4  | pre_103 | pre_203\n"
+           "shadow/update/delta     : pre_5  | pre_104 | pre_204\n"
+           "shadow/get              : pre_10 | pre_110 | pre_210\n"
+           "shadow/get/rejected     : pre_11 | pre_111 | pre_211\n"
+           "shadow/get/accepted     : pre_12 | pre_112 | pre_212\n"
+           "shadow/delete           : pre_20 | pre_120 | pre_220\n"
+           "shadow/delete/rejected  : pre_21 | pre_121 | pre_221\n"
+           "shadow/delete/accepted  : pre_22 | pre_122 | pre_222\n"
+           "\nAWS Non-Services topics\n"
+           "temp                    : pre_30 | pre_130 | pre_230\n"
+           "hum                     : pre_31 | pre_131 | pre_231\n"
+           "timeout                 : pre_32 | pre_132 | pre_232\n"
+           "led                     : pre_33 | pre_133 | pre_233\n");
 
     return 0;
 }
