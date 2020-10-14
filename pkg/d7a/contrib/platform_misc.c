@@ -48,7 +48,8 @@ void hw_watchdog_feed(void)
 __LINK_C uint64_t hw_get_unique_id(void)
 {
     return 0x1122334455667788;  /* Modem */
-    //return 0xdf00b9de4031fe6a;  /* Node 1 */
+    //return 0xdf00b9de4031fe6a;  /* Node 0 */
+    //return 0x78e8f78d73dfc349;  /* Node 1 */
     //return 0x2600bdf005fd6804;  /* Node 2 */
 }
 
