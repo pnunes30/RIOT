@@ -43,6 +43,7 @@
 #include "Bsp/machine/sfradr.h"
 #include "Bsp/machine/cpu.h"
 #include "Bsp/machine/ic.h"
+#include "Bsp/machine/flash_ctl.h"
 
 #ifdef USE_PERIPH_CORTUS_UART
 #include "Bsp/machine/uart.h"

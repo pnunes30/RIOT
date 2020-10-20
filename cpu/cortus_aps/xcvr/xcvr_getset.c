@@ -308,6 +308,8 @@ static uint32_t compute_base_frequency(uint32_t channel, uint8_t coeff_div)
 {
     unsigned long long freq;
 
+    DEBUG("[xcvr] channel %ld %04x\n", channel, channel);
+
     freq = (unsigned long long)(channel * ((pow(2,24)*coeff_div)/ XCVR_XTAL_FREQ));
 
     DEBUG("[xcvr] Set base frequency to %08X\n",freq);
@@ -374,8 +376,7 @@ uint32_t xcvr_get_channel(const ciot25_xcvr_t *dev)
 void xcvr_set_channel(ciot25_xcvr_t *dev, uint32_t channel)
 {
     unsigned coef_divider ;
-    signed long long *offset;
-    offset = NULL;
+    int32_t XTAL_offset;
     DEBUG("[xcvr] Set channel: %lu\n", channel);
 
     if (channel > XCVR_RF_MID_BAND_THRESH)
@@ -395,11 +396,12 @@ void xcvr_set_channel(ciot25_xcvr_t *dev, uint32_t channel)
                                         XCVR_RADIO_TX_CONFIG_VCO_DIVIDER_4);
     }
 
-    /* Write frequency settings into chip */
-    offset = (signed long long *)XCVR_FREQ_OFFSET_SET_ADDR;
-    DEBUG("[xcvr] freq offset: %ld", *offset);
+    /* Read XTAL frequency compensation */
+    XTAL_offset = *((volatile unsigned int*)XCVR_FREQ_OFFSET_SET_ADDR);
 
-    xcvr->freq_carrier = /*0x35f1b0f0*/ compute_base_frequency((channel/*+(*offset)*/), coef_divider);
+    DEBUG("[xcvr] XTAL freq offset: %ld", XTAL_offset);
+
+    xcvr->freq_carrier = compute_base_frequency((channel - XTAL_offset), coef_divider);
 
     DEBUG("[xcvr] Set freq carrier: %08X", xcvr->freq_carrier);
 

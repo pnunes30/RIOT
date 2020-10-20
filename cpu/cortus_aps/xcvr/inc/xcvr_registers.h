@@ -29,7 +29,7 @@ extern "C" {
  *
  *
  */
-#define XCVR_FREQ_OFFSET_SET_ADDR                          (0x8007FE00)
+#define XCVR_FREQ_OFFSET_SET_ADDR                          (0x8007FD00)
 
 //xcvr
 // Operation Mode register
