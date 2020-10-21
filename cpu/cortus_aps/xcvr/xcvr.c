@@ -214,7 +214,7 @@ void xcvr_init_radio_settings(ciot25_xcvr_t *dev)
 
     xcvr_set_tx_timeout(dev, XCVR_TX_TIMEOUT_DEFAULT);
 
-    xcvr_set_channel(dev, XCVR_CHANNEL_DEFAULT);
+    xcvr_set_channel(dev, XCVR_CHANNEL_DEFAULT, true);
 
     xcvr_set_payload_length(dev, XCVR_PAYLOAD_LENGTH);
     xcvr_set_tx_power(dev, XCVR_RADIO_TX_POWER);

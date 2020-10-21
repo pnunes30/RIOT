@@ -160,6 +160,9 @@ static int _send(netdev_t *netdev, const iolist_t *iolist)
     /* Assume the chip is in idle, no need to wake up the peripheral if the
      * main CPU is active */
 
+    /* Restore frequency to FC instead of FC + FDEV*/
+    xcvr_set_channel(dev, dev->settings.channel, false);
+
     dif->tx_thr = XCVR_DATA_IF_TX_THRESHOLD;
     //xcvr_flush_tx_fifo();
 
@@ -450,7 +453,7 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
 
         case NETOPT_CHANNEL_FREQUENCY:
             assert(len <= sizeof(uint32_t));
-            xcvr_set_channel(dev, *((const uint32_t*) val));
+            xcvr_set_channel(dev, *((const uint32_t*) val), true);
             return sizeof(uint32_t);
 
         case NETOPT_BITRATE:

@@ -96,7 +96,7 @@ bool xcvr_is_channel_free(ciot25_xcvr_t *dev, uint32_t freq, int16_t rssi_thresh
 {
     int16_t rssi = 0;
 
-    xcvr_set_channel(dev, freq);
+    xcvr_set_channel(dev, freq, true);
     xcvr_set_op_mode(dev, XCVR_OPMODE_RECEIVER);
 
     hw_busy_wait(1000); /* wait 1 millisecond */

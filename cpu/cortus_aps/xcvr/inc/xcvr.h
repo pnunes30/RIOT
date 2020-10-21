@@ -130,6 +130,7 @@ typedef struct {
     uint8_t power;                     /**< Signal power */
     uint8_t bandwidth;                 /**< Signal bandwidth */
     uint8_t datarate;                  /**< bitrate in bps */
+    uint32_t fdev;                     /**< frequency deviation */
 
     uint8_t flags;                     /**< Boolean flags */
     uint32_t rx_timeout;               /**< RX timeout in symbols */
@@ -309,7 +310,7 @@ uint32_t xcvr_get_channel(const ciot25_xcvr_t *dev);
  * @param[in] dev                      The xcvr device descriptor
  * @param[in] freq                     Channel RF frequency
  */
-void xcvr_set_channel(ciot25_xcvr_t *dev, uint32_t freq);
+void xcvr_set_channel(ciot25_xcvr_t *dev, uint32_t freq, bool save);
 
 /**
  * @brief   Sets the radio in stand-by mode

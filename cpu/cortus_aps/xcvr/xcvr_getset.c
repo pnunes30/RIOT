@@ -373,7 +373,7 @@ uint32_t xcvr_get_channel(const ciot25_xcvr_t *dev)
     return compute_freq_carrier(xcvr->freq_carrier);
 }
 
-void xcvr_set_channel(ciot25_xcvr_t *dev, uint32_t channel)
+void xcvr_set_channel(ciot25_xcvr_t *dev, uint32_t channel, bool save)
 {
     unsigned coef_divider ;
     int32_t XTAL_offset;
@@ -406,7 +406,8 @@ void xcvr_set_channel(ciot25_xcvr_t *dev, uint32_t channel)
     DEBUG("[xcvr] Set freq carrier: %08X", xcvr->freq_carrier);
 
     /* Save current channel */
-    dev->settings.channel = channel;
+    if (save)
+        dev->settings.channel = channel;
 }
 
 
@@ -499,6 +500,11 @@ void xcvr_set_rx(ciot25_xcvr_t *dev)
     dev->packet.length = 0;
     dev->packet.pos = 0;
     dev->packet.fifothresh = 0;
+
+    /* Workaround to set frequency to FC instead of FDEV-*/
+    xcvr_set_channel(dev, dev->settings.channel + dev->settings.fsk.fdev, false);
+
+    /* wait startup time to take into account the PLL settling time?*/
 
     xcvr_set_state(dev, XCVR_RF_RX_RUNNING);
 
@@ -905,6 +911,8 @@ void xcvr_set_tx_fdev(ciot25_xcvr_t *dev, uint32_t fdev)
     uint32_t tmpFdev = (XCVR_OFFSET_FREQ_DEV << 16 ) | (exponent << 8) | mantissa;
     xcvr->freq_dev = tmpFdev ;
     DEBUG("[xcvr] Set Frequency deviation to 0x%lx",tmpFdev );
+
+    dev->settings.fsk.fdev = fdev;
 }
 
 uint32_t xcvr_get_tx_fdev(const ciot25_xcvr_t *dev)
