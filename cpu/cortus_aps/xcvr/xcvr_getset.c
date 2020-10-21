@@ -272,14 +272,6 @@ void xcvr_set_syncword(ciot25_xcvr_t *dev, uint8_t *syncword, uint8_t sync_size)
 {
     assert(sync_size >= 1);
     assert(sync_size < 8);
-#if ENABLE_DEBUG
-    DEBUG("[xcvr] set syncword: len <%d> :", sync_size);
-    for( uint32_t i = 0 ; i < sync_size ; i++ )
-    {
-        DEBUG(" %02X", syncword[i]);
-    }
-    DEBUG("\r\n");
-#endif
 
      uint32_t *syncword_ptr = (uint32_t *)syncword;
 
@@ -287,14 +279,14 @@ void xcvr_set_syncword(ciot25_xcvr_t *dev, uint8_t *syncword, uint8_t sync_size)
 
     if (sync_size > 4)
     {
-    	uint32_t mask= 0xFFFFFFFF >> (8 - sync_size)*8;
-    	codec->sync_word_h = syncword_ptr[1] & mask;
-    	codec->sync_word_l = syncword_ptr[0];
+        uint32_t mask= 0xFFFFFFFF >> (8 - sync_size)*8;
+        codec->sync_word_h = syncword_ptr[1] & mask;
+        codec->sync_word_l = syncword_ptr[0];
     }
     else
     {
-       	uint32_t mask= 0xFFFFFFFF >> (4 - sync_size)*8;
-       	codec->sync_word_l = syncword_ptr[0] & mask;
+        uint32_t mask= 0xFFFFFFFF >> (4 - sync_size)*8;
+        codec->sync_word_l = syncword_ptr[0] & mask;
     }
 
     DEBUG("[xcvr] set syncword l: <%08x> :", codec->sync_word_l);
