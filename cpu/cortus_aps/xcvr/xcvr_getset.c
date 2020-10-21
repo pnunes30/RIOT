@@ -425,7 +425,9 @@ void xcvr_set_standby(ciot25_xcvr_t *dev)
     timer_cancel_event(&dev->_internal.tx_timeout_timer);
     timer_cancel_event(&dev->_internal.rx_timeout_timer);
 
-    dev->options = 0; // clear the options
+    // by default, keep only the option to notify the upper layer when a complete frame is received.
+    dev->options = XCVR_OPT_TELL_RX_END;
+
     /* Disable the interrupts */
     xcvr->mask = 0;
     dif->rx_mask = 0;
