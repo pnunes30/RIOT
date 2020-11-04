@@ -25,18 +25,23 @@
 #include "hwsystem.h"
 
 
-//#include "machine/xcvr.h"
 #include "periph_cpu.h"
 
 #include "xcvr.h"
 #include "xcvr_internal.h"
 #include "xcvr_registers.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 1
+
+#if ENABLE_DEBUG
 #include "debug.h"
+#else
+    #define DEBUG(...)
+#endif
 
 int xcvr_check_version(const ciot25_xcvr_t *dev)
 {
+    (void) dev;
     DEBUG("[xcvr] check version");
     // TODO
     return 0;
@@ -44,6 +49,7 @@ int xcvr_check_version(const ciot25_xcvr_t *dev)
 
 void xcvr_write_fifo(const ciot25_xcvr_t *dev, uint8_t *buffer, uint8_t size)
 {
+    (void) dev;
     uint8_t cnt_byte = 0 ;
     for (cnt_byte = 0; cnt_byte < size; cnt_byte++){
         dif->tx_data = buffer[cnt_byte];
@@ -52,6 +58,7 @@ void xcvr_write_fifo(const ciot25_xcvr_t *dev, uint8_t *buffer, uint8_t size)
 
 void xcvr_read_fifo(const ciot25_xcvr_t *dev, uint8_t *buffer, uint8_t size)
 {
+    (void) dev;
     uint8_t cnt_byte = 0 ;
     for (cnt_byte = 0; cnt_byte < size; cnt_byte++){
         buffer[cnt_byte] = dif->rx_data ;
@@ -60,6 +67,7 @@ void xcvr_read_fifo(const ciot25_xcvr_t *dev, uint8_t *buffer, uint8_t size)
 
 void xcvr_rx_chain_calibration(ciot25_xcvr_t *dev)
 {
+    (void) dev;
     DEBUG("[xcvr] RX calibration");
     //TODO
 }

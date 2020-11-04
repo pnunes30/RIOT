@@ -24,7 +24,6 @@
 
 #include "periph_cpu.h"
 
-//#include "platform.h"
 #include "hwradio.h"
 #include "hwcounter.h"
 
@@ -32,10 +31,13 @@
 #include "xcvr_internal.h"
 #include "xcvr_registers.h"
 
-#define ENABLE_DEBUG (0)
-#include "debug.h"
-
+#define ENABLE_DEBUG 1
 #define RX_WITH_IRQ_NOT_EMPTY 1
+#define FILL_WITH_COUNTER 1
+
+#if ENABLE_DEBUG
+#include "debug.h"
+#endif
 
 typedef struct
 {
@@ -276,6 +278,7 @@ void xcvr_set_syncword(ciot25_xcvr_t *dev, uint8_t *syncword, uint8_t sync_size)
 {
     assert(sync_size >= 1);
     assert(sync_size < 8);
+    DEBUG("[xcvr] set syncword: len <%d> :", sync_size);
 
      uint32_t *syncword_ptr = (uint32_t *)syncword;
 
@@ -429,10 +432,13 @@ void xcvr_set_standby(ciot25_xcvr_t *dev)
     xcvr->mask = 0;
     dif->rx_mask = 0;
     dif->tx_mask = 0 ;
+#if FILL_WITH_COUNTER == 1
+    counter1->mask = 0;
+#endif
 
     radio->tx_cfg &= ~XCVR_RADIO_TX_CONFIG_TRANSMISSION_ENABLE;
     xcvr_set_op_mode(dev, XCVR_OPMODE_STANDBY );
-    xcvr_set_state(dev,  XCVR_RF_IDLE);
+    xcvr_set_state(dev, XCVR_RF_IDLE);
 }
 
 void xcvr_restart_rx_chain(ciot25_xcvr_t *dev)
@@ -457,8 +463,6 @@ void xcvr_restart_rx_chain(ciot25_xcvr_t *dev)
     // STANDBY MODE (IPG) --> so CLK_CDR is enable
     // This allow a lost byte to be written in order to flush it before the real restart
     xcvr->op_mode = 0x0;
-//    hw_counter_init(1, 100, false);
-//    while(!hw_counter_is_expired(1));
 
     xtimer_usleep(1000);
 
@@ -471,8 +475,6 @@ void xcvr_restart_rx_chain(ciot25_xcvr_t *dev)
     baseband->rssi_config |= 0x3;
 
     // wait before enabling the demodulator upon RSSI measurement
-//    hw_counter_init(1, 10000, false);
-//    while(!hw_counter_is_expired(1));
     xtimer_usleep(10000);
 
     DEBUG("Nb Preamble : %08x\n", codec->preamble_det_ndet);
@@ -528,12 +530,9 @@ void xcvr_set_rx(ciot25_xcvr_t *dev)
     // This allow a lost byte ton be written in order to flush it before the real restart
     xcvr->op_mode = 0x00;
 
-//    hw_counter_init(1, 100, false);
-//    while(!hw_counter_is_expired(1));
-
     xtimer_usleep(100);
 
-    // RECVEIVER MODE --> so we can flush any bytes that are not supposed to be here
+    // RECEIVER MODE --> so we can flush any bytes that are not supposed to be here
     xcvr->op_mode = 0x02;
     //xcvr_set_op_mode(dev, XCVR_OPMODE_RECEIVER);
 
@@ -542,10 +541,9 @@ void xcvr_set_rx(ciot25_xcvr_t *dev)
     baseband->rssi_config |= 0x3;
 
     // wait before enabling the demodulator upon RSSI measurement
-//    hw_counter_init(1, 1000, false);
-//    while(!hw_counter_is_expired(1));
-
     xtimer_usleep(1000);
+
+    DEBUG("Start RX: Nb Preamble : %08x\n", codec->preamble_det_ndet);
 
     // ENABLE DEMODULATOR
     baseband->rssi_config &= ~0x2;
@@ -561,9 +559,14 @@ void xcvr_set_rx(ciot25_xcvr_t *dev)
     }
     else
     {
+#if defined RX_WITH_IRQ_NOT_EMPTY
+        dif->rx_mask = XCVR_DATA_IF_RX_NOT_EMPTY;
+#else
+        xcvr->mask = XCVR_PAYLOAD_READY; // | XCVR_PREAMBLE_DETECTION_IN_PROGRESS;
+        //xcvr->mask = ((xcvr->mask) & XCVR_SYNC_TIMEOUT_MASK) | XCVR_SYNC_TIMEOUT;
+#endif
         // when IRQ flag is not set, we ignore received packets
         //dif->rx_mask = XCVR_DATA_IF_RX_ALMOST_FULL;
-        xcvr->mask = XCVR_PAYLOAD_READY;
         //xcvr->mask &= XCVR_CRC_VALID_MASK;
         //hw_gpio_disable_interrupt(dev->params.dio0_pin);
         //hw_gpio_disable_interrupt(dev->params.dio1_pin);

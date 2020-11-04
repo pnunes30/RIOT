@@ -25,11 +25,7 @@
 #include "periph_cpu.h"
 
 #include "hwradio.h"
-#include "machine/counter.h"
 #include "hwsystem.h"
-
-//#include "machine/xcvr.h"
-//#include "machine/ic.h"
 
 #include "xcvr.h"
 #include "xcvr_internal.h"
@@ -40,17 +36,11 @@
 #include "net/netdev.h"
 #include "net/netopt.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 1
+#define RX_WITH_IRQ_NOT_EMPTY 1
 
 #if ENABLE_DEBUG
 #include "debug.h"
-static void log_print_data(uint8_t* message, uint32_t length);
-    #define DEBUG_DATA(...) log_print_data(__VA_ARGS__)
-#else
-    #define DEBUG_DATA(...)
-#endif
-
-#if (ENABLE_DEBUG)
 static void log_print_data(uint8_t* message, uint32_t length)
 {
     for( uint32_t i=0 ; i<length ; i++ )
@@ -58,7 +48,11 @@ static void log_print_data(uint8_t* message, uint32_t length)
         printf(" %02X", message[i]);
     }
 }
+    #define DEBUG_DATA(...) log_print_data(__VA_ARGS__)
+#else
+    #define DEBUG_DATA(...)
 #endif
+
 
 #define FREQ_CPU 32 // 32 MHz
 #define FILL_WITH_COUNTER 1
@@ -106,27 +100,27 @@ static void dump_register(void)
 
     DEBUG("\r\nXCRV register");
     for (uint32_t *add = SFRADR_XCVR; add <= SFRADR_XCVR+0x2c; add++)
-        DEBUG("XCVR ADDR %2X DATA %08X", add, *add);
+        DEBUG("XCVR ADDR %p DATA %04X", add, *add);
 
     DEBUG("\r\nSFRADR_CODEC register");
     for (uint32_t *add = SFRADR_CODEC; add <= SFRADR_CODEC + 0x24; add++)
-        DEBUG("CODEC ADDR %2X DATA %08X", add, *add);
+        DEBUG("CODEC ADDR %p DATA %04X", add, *add);
 
     DEBUG("\r\nSFRADR_BASEBAND register");
     for (uint32_t *add = SFRADR_BASEBAND; add <= SFRADR_BASEBAND + 0x90; add++)
-        DEBUG("BASEBAND ADDR %2X DATA %08X", add, *add);
+        DEBUG("BASEBAND ADDR %p DATA %04X", add, *add);
 
     DEBUG("\r\nSFRADR_RADIO register");
     for (uint32_t *add = SFRADR_RADIO; add <= SFRADR_RADIO + 0x14; add++)
-        DEBUG("RADIO ADDR %2X DATA %08X", add, *add);
+        DEBUG("RADIO ADDR %p DATA %04X", add, *add);
 
     DEBUG("\r\nSFRADR_DATA_IF register");
     for (uint32_t *add = SFRADR_DATA_IF; add <= SFRADR_DATA_IF + 0x24; add++)
-        DEBUG("DATA_IF ADDR %2X DATA %08X", add, *add);
+        DEBUG("DATA_IF ADDR %p DATA %04X", add, *add);
 
     DEBUG("\r\nSFRADR_ANALOG_CTL register");
-    for (unsigned int *add = SFRADR_ANALOG_CTL; add <= SFRADR_ANALOG_CTL + 248; add++)
-        DEBUG("ANALOG CTL ADDR %2X DATA %08X", add, *add);
+    for (uint32_t *add = SFRADR_ANALOG_CTL; add <= SFRADR_ANALOG_CTL + 248; add++)
+        DEBUG("ANALOG CTL ADDR %p DATA %04X", add, *add);
 
     // Please note that when reading the first byte of the FIFO register, this
     // byte is removed so the dump is not recommended before a TX or take care
@@ -570,10 +564,6 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
         case NETOPT_TX_POWER:
             assert(len <= sizeof(int8_t));
             int8_t power = *((const int8_t *)val);
-            if ((power < INT8_MIN) || (power > INT8_MAX)) {
-                res = -EINVAL;
-                break;
-            }
             xcvr_set_tx_power(dev, (int8_t)power);
             return sizeof(int16_t);
 
@@ -729,6 +719,10 @@ static void fill_in_fifo(ciot25_xcvr_t *dev)
             xcvr->mask = (xcvr->mask & XCVR_TX_DONE_MASK) | XCVR_TX_DONE_ENABLE;
             return;
         }
+#if FILL_WITH_COUNTER == 1
+        if (dev->options & XCVR_OPT_TELL_TX_REFILL)
+            space_left = XCVR_FIFO_MAX_SIZE - 10;
+#endif
     }
 
     if (remaining_bytes > space_left)
@@ -758,7 +752,7 @@ static void fill_in_fifo(ciot25_xcvr_t *dev)
         if (dev->options & XCVR_OPT_TELL_TX_REFILL)
         {
 #if FILL_WITH_COUNTER == 1
-            hw_counter_init(144 * (remaining_bytes-10)); // 144µs per byte at 55.555kbps
+            hw_counter_init(144 * (remaining_bytes)); // 144µs per byte at 55.555kbps
             counter1->mask = 1;
 #else
             dif->tx_mask = (dif->tx_mask & ~XCVR_DATA_IF_TX_ALMOST_EMPTY) | XCVR_DATA_IF_TX_ALMOST_EMPTY;
@@ -834,7 +828,10 @@ void interrupt_handler(IRQ_DATA_IF_RX)
     // Read status, read data and read status again
     if (dev->packet.length == 0)
     {
-        dev->packet.length = dev->packet.buf[0] + 1;
+        if (!(dev->options & XCVR_OPT_TELL_RX_END))
+            dev->packet.length = 2048;
+        else
+            dev->packet.length = dev->packet.buf[0] + 1;
         DEBUG("\n\rIRQ! %d", dev->packet.length);
     }
 
@@ -962,8 +959,6 @@ void _on_xcvr_rx_interrupt(void *arg)
     // working for a while:
     xcvr->op_mode = 0x00;
 
-    //hw_counter_init(1, 700, false);
-    //while(!hw_counter_is_expired(1));
     xtimer_usleep(700);
 
     // WARNING: Stop demodulation - this MUST come after RSSI is disabled
@@ -972,8 +967,8 @@ void _on_xcvr_rx_interrupt(void *arg)
 
     //if((dif->rx_status & 0x4) != 0x4)
     netdev->event_callback(netdev, NETDEV_EVENT_RX_COMPLETE);
-    // procedure to restart the RX
-    xcvr_restart_rx_chain(dev);
+    // can't restart RX since a response sending may be in progress
+    //xcvr_restart_rx_chain(dev);
 }
 
 void _on_data_if_rx_interrupt(void *arg)
@@ -1046,11 +1041,12 @@ void _on_data_if_rx_interrupt(void *arg)
         */
         if (remaining_bytes == 0) {
             //WORKAROUND
-        	dev->packet.crc_status = HW_CRC_UNAVAILABLE;
+            dev->packet.crc_status = HW_CRC_UNAVAILABLE;
 
-        	netdev->event_callback(netdev, NETDEV_EVENT_RX_COMPLETE);
+            netdev->event_callback(netdev, NETDEV_EVENT_RX_COMPLETE);
 
-            xcvr_restart_rx_chain(dev);
+            // can't restart RX since a response sending may be in progress
+            //xcvr_restart_rx_chain(dev);
 
             // Restart the reception until upper layer decides to stop it
 /*            dev->packet.fifothresh = 0;

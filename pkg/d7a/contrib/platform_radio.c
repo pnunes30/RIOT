@@ -19,20 +19,26 @@
 #include <stdbool.h>
 #include <assert.h>
 #include "string.h"
+
 #include "framework/inc/types.h"
-
-#define ENABLE_DEBUG (0)
-#include "debug.h"
-
 #include "framework/hal/inc/hwradio.h"
 #include "framework/inc/errors.h"
 
-#include "d7a_netdev.h"
 #include "net/netdev.h"
 #include "net/netopt.h"
+#include "d7a_netdev.h"
+
+#define ENABLE_DEBUG 1
 
 #if (ENABLE_DEBUG)
-static void log_print_data(uint8_t* message, uint32_t length);
+#include "debug.h"
+static void log_print_data(uint8_t* message, uint32_t length)
+{
+    for( uint32_t i=0 ; i<length ; i++ )
+    {
+        printf(" %02X", message[i]);
+    }
+}
 #define DPRINT(...) DEBUG_PRINT(__VA_ARGS__)
 #define DPRINT_DATA(...) log_print_data(__VA_ARGS__)
 #else
@@ -49,15 +55,6 @@ static tx_refill_callback_t tx_refill_callback;
 
 static netdev_t *netdev;
 
-#if (ENABLE_DEBUG)
-static void log_print_data(uint8_t* message, uint32_t length)
-{
-    for( uint32_t i=0 ; i<length ; i++ )
-    {
-        printf(" %02X", message[i]);
-    }
-}
-#endif
 
 hw_radio_state_t hw_radio_get_opmode(void) {
     netopt_state_t state;
@@ -105,12 +102,12 @@ void hw_radio_set_opmode(hw_radio_state_t opmode) {
 
 void hw_radio_set_center_freq(uint32_t center_freq)
 {
-    DPRINT("Set center frequency: %d\n", center_freq);
+    DPRINT("Set center frequency: %ld\n", center_freq);
 
     netdev->driver->set(netdev, NETOPT_CHANNEL_FREQUENCY, &center_freq, sizeof(uint32_t));
 }
 
-void hw_radio_set_rx_bw_hz(uint32_t bw_hz)
+void hw_radio_set_rx_bw_hz(uint32_t bw_hz) // not applicable in the CIoT25 XCVR?
 {
     netdev->driver->set(netdev, NETOPT_BANDWIDTH, &bw_hz, sizeof(uint32_t));
 }
@@ -249,7 +246,7 @@ error_t hw_radio_set_idle(void)
 
 bool hw_radio_is_idle(void)
 {
-    if (hw_radio_get_opmode() == HW_STATE_STANDBY)
+    if (hw_radio_get_opmode() == HW_STATE_SLEEP)
         return true;
     else
         return false;
@@ -279,6 +276,10 @@ static void _event_cb(netdev_t *dev, netdev_event_t event)
         case NETDEV_EVENT_RX_COMPLETE:
             len = dev->driver->recv(netdev, NULL, 0, 0);
             hw_radio_packet_t* rx_packet = alloc_packet_callback(len);
+            if(rx_packet == NULL) {
+                    DPRINT("Could not alloc packet, skipping");
+                    return;
+            }
             rx_packet->length = len;
 
             dev->driver->recv(netdev, rx_packet->data, len, &packet_info);
@@ -286,13 +287,7 @@ static void _event_cb(netdev_t *dev, netdev_event_t event)
             DPRINT("Payload: %d bytes, RSSI: %i, LQI: %i" /*SNR: %i, TOA: %i}\n"*/,
                     len, packet_info.rssi, packet_info.lqi/*(int)packet_info.snr,
                     (int)packet_info.time_on_air*/);
-#if ENABLE_DEBUG
-            for( int i=0; i < len; i++ )
-            {
-                DPRINT(" %02X", rx_packet->data[i]);
-            }
-#endif
-            //DPRINT_DATA(rx_packet->data, len);
+            DPRINT_DATA(rx_packet->data, len);
 
             rx_packet->rx_meta.timestamp = timer_get_counter_value();
             rx_packet->rx_meta.crc_status = HW_CRC_UNAVAILABLE;
@@ -308,7 +303,7 @@ static void _event_cb(netdev_t *dev, netdev_event_t event)
             }
             break;
         case NETDEV_EVENT_TX_REFILL_NEEDED:
-            DPRINT("New data needed to transmit without discontinuity");
+            //DPRINT("New data needed to transmit without discontinuity");
 
             if (tx_refill_callback) {
                 uint8_t thr;

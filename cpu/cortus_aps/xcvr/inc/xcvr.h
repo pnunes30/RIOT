@@ -34,7 +34,7 @@ extern "C" {
  * @name    XCVR device default configuration
  * @{
  */
-#define XCVR_PACKET_LENGTH             (0xFF)             /**< max packet length = 255b */
+#define XCVR_PACKET_LENGTH             2048 //(0xFF)      /**< max packet length = 255b */
 #define XCVR_FIFO_MAX_SIZE             (64)               /**< FIFO max size */
 #define XCVR_FIFO_TX_MAX_SIZE          (11)               /**< FIFO max size */
 #define XCVR_FIFO_MID_SIZE             (32)               /**< FIFO mid size */
@@ -130,7 +130,7 @@ typedef struct {
     uint8_t power;                     /**< Signal power */
     uint8_t bandwidth;                 /**< Signal bandwidth */
     uint8_t datarate;                  /**< bitrate in bps */
-    uint32_t fdev;                     /**< frequency deviation */
+    uint32_t fdev;                     /**< Frequency deviation */
 
     uint8_t flags;                     /**< Boolean flags */
     uint32_t rx_timeout;               /**< RX timeout in symbols */
@@ -165,7 +165,7 @@ typedef uint8_t xcvr_flags_t;
  */
 typedef struct {
     uint16_t length;                     /**< Length of the packet (without length byte) */
-    uint8_t pos;                         /**< Index of the data already transmitted. */
+    uint16_t pos;                         /**< Index of the data already transmitted. */
     uint8_t fifothresh;                  /**< Threshold used to trigger FifoLevel interrupt. */
     uint8_t buf[XCVR_PACKET_LENGTH +1];/**< buffer for the whole packet including the length byte */
     uint8_t crc_status;                  /**< CRC status of the received packet */

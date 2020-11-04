@@ -22,7 +22,6 @@
 #include <stdlib.h>
 
 #include "periph_cpu.h"
-//#include "machine/xcvr.h"
 
 #include "xcvr.h"
 #include "xcvr_internal.h"
@@ -38,23 +37,16 @@
 
 #if ENABLE_DEBUG
 #include "debug.h"
-
-static void log_print_data(uint8_t* message, uint32_t length);
-    #define DEBUG_DATA(...) log_print_data(__VA_ARGS__)
-#else
-    #define DEBUG_DATA(...)
-#endif
-
-#if (ENABLE_DEBUG)
 static void log_print_data(uint8_t* message, uint32_t length)
 {
     for( uint32_t i=0 ; i<length ; i++ )
     {
         printf(" %02X", message[i]);
     }
-}
+    #define DEBUG_DATA(...) log_print_data(__VA_ARGS__)
+#else
+    #define DEBUG_DATA(...)
 #endif
-
 
 /* Internal functions */
 static void _init_timers(ciot25_xcvr_t *dev);
@@ -147,8 +139,8 @@ void xcvr_init_radio_settings(ciot25_xcvr_t *dev)
                            XCVR_BASEBAND_AGC_CONFIG_RSSI_HIGH_DEFAULT_THRESHOLD;
 
     baseband->afc_config = XCVR_BASEBAND_AFC_CONFIG_OFF |
-                           XCVR_BASEBAND_AFC_CONFIG_TIMER_ON |
-                           XCVR_BASEBAND_AFC_CONFIG_BOOST_MODE_ON |
+                           XCVR_BASEBAND_AFC_CONFIG_TIMER_OFF |
+                           XCVR_BASEBAND_AFC_CONFIG_BOOST_MODE_OFF |
                            XCVR_BASEBAND_AFC_CONFIG_TIME_CONST_DC_REMOVING;
 
     baseband->dcoc_config = XCVR_BASEBAND_DCOC_CONFIG_ON |
@@ -169,7 +161,7 @@ void xcvr_init_radio_settings(ciot25_xcvr_t *dev)
 
     baseband->dm_config = XCVR_BASEBAND_DM_CONFIG_OFF |
                           XCVR_BASEBAND_DM_CONFIG_AUTO_MAGNITUDE_CONTROL_MODE |
-                          XCVR_BASEBAND_DM_CONFIG_DEMULATOR_OUT_9V6 |
+			  XCVR_BASEBAND_DM_CONFIG_DEMULATOR_OUT_55V5 |
                           XCVR_BASEBAND_DM_CONFIG_MODULATION_SHAPING_20;
 
     baseband->cdr_config1 = XCVR_BASEBAND_CDR_CONFIG2_GL_FILT_ON;
@@ -188,7 +180,7 @@ void xcvr_init_radio_settings(ciot25_xcvr_t *dev)
 
     codec->detector_config = XCVR_CODEC_DETECTOR_CONFIG_SELECTION |
                              XCVR_CODEC_DETECTOR_CONFIG_PREAMBLE_THRESHOLD_16 |
-                             XCVR_CODEC_DETECTOR_CONFIG_SYNC_THRESHOLD |
+                             XCVR_CODEC_DETECTOR_CONFIG_SYNC_THRESHOLD_13 |
                              XCVR_CODEC_DETECTOR_CONFIG_PREAMBLE_TIMEOUT_OFF |
                              XCVR_CODEC_DETECTOR_CONFIG_SYNC_TIMEOUT_OFF |
                              XCVR_CODEC_DETECTOR_CONFIG_PREAMBLE_TIMEOUT_VALUE |
