@@ -26,6 +26,7 @@
 #define USE_PERIPH_CORTUS_PM
 #define USE_PERIPH_CORTUS_UART
 #define USE_PERIPH_CORTUS_TIMER
+#define USE_PERIPH_CORTUS_COUNTER
 #define USE_PERIPH_CORTUS_GPIO
 #define USE_PERIPH_CORTUS_SPI
 #define USE_PERIPH_CORTUS_RTT
@@ -53,6 +54,10 @@
 #include "Bsp/machine/timer.h"
 #include "Bsp/machine/timer_cap.h"
 #include "Bsp/machine/timer_cmp.h"
+#endif
+
+#ifdef USE_PERIPH_CORTUS_COUNTER
+#include "Bsp/machine/counter.h"
 #endif
 
 #ifdef USE_PERIPH_CORTUS_GPIO
