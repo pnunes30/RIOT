@@ -281,7 +281,7 @@ static int _cmd_disconnect(int argc, char **argv)
         return 1;
     }
 
-    ret = asymcute_disconnect(&_connection, req, NULL);
+    ret = asymcute_disconnect(&_connection, req, 0);
     if (ret != ASYMCUTE_OK) {
         printf("[mqtt] error %i: failed to issue DISCONNECT request", ret);
         return 1;

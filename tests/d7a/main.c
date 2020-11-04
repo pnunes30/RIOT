@@ -315,7 +315,9 @@ void sensor_measurement(void *arg)
 #endif
     }
 
+#if ENABLE_MQTT_AUTO
 repeat:
+#endif
     /* periodically read temp and humidity values */
     xtimer_set(&dht_timer, timeout);
     return;
