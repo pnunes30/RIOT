@@ -1,7 +1,7 @@
-From db0ecfb2ea18bb33ed460eeeaa19259f83baf217 Mon Sep 17 00:00:00 2001
+From 634ef403b0d0fd4be8d21af779d77b2f868c6785 Mon Sep 17 00:00:00 2001
 From: Philippe Nunes <philippe.nunes@cortus.com>
 Date: Wed, 8 Aug 2018 19:24:35 +0200
-Subject: [PATCH 3/8] Replace timer.h by the RIOT abstraction definition
+Subject: [PATCH 3/9] Replace timer.h by the RIOT abstraction definition
 
 ---
  stack/framework/hal/inc/hwradio.h | 2 +-
@@ -13,7 +13,7 @@ Subject: [PATCH 3/8] Replace timer.h by the RIOT abstraction definition
  6 files changed, 6 insertions(+), 6 deletions(-)
 
 diff --git a/stack/framework/hal/inc/hwradio.h b/stack/framework/hal/inc/hwradio.h
-index 0c79cfe..d5dbe28 100644
+index 4d55e30..3d156ea 100644
 --- a/stack/framework/hal/inc/hwradio.h
 +++ b/stack/framework/hal/inc/hwradio.h
 @@ -33,7 +33,7 @@
@@ -65,7 +65,7 @@ index 1655a09..4a14840 100644
  
  #include "phy.h"
 diff --git a/stack/modules/d7ap/phy.c b/stack/modules/d7ap/phy.c
-index e7ca080..a2857d3 100644
+index 4d85386..2d33199 100644
 --- a/stack/modules/d7ap/phy.c
 +++ b/stack/modules/d7ap/phy.c
 @@ -29,7 +29,7 @@

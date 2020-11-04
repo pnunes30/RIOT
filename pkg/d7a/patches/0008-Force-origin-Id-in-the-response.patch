@@ -1,7 +1,7 @@
-From e82e8bb7145edb3a9832b5284450f547f9aedd75 Mon Sep 17 00:00:00 2001
+From bdf24ba971b6676415382688321c4fac4dc28b4b Mon Sep 17 00:00:00 2001
 From: Matthieu Saignemorte <matthieu.saignemorte@cortus.com>
 Date: Fri, 26 Jul 2019 14:52:35 +0200
-Subject: [PATCH 8/8] Force origin Id in the response
+Subject: [PATCH 8/9] Force origin Id in the response
 
 ---
  stack/modules/d7ap/d7anp.c | 2 ++
@@ -22,7 +22,7 @@ index 43a92e4..d2bc4e4 100644
          else if (packet->d7anp_ctrl.origin_id_type == ID_TYPE_NBID)
          {
 diff --git a/stack/modules/d7ap/d7atp.c b/stack/modules/d7ap/d7atp.c
-index 5669900..95a6a0b 100644
+index e00d2b7..92f2f20 100644
 --- a/stack/modules/d7ap/d7atp.c
 +++ b/stack/modules/d7ap/d7atp.c
 @@ -277,6 +277,7 @@ void d7atp_init()

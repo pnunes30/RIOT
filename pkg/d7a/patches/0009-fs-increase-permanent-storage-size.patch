@@ -1,0 +1,25 @@
+From f7c5a4fcb250365dd190e6778a88c5e95488cbb3 Mon Sep 17 00:00:00 2001
+From: Philippe Nunes <philippe.nunes@cortus.com>
+Date: Wed, 4 Nov 2020 14:31:36 +0100
+Subject: [PATCH 9/9] fs: increase permanent storage size
+
+---
+ stack/framework/inc/fs.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/stack/framework/inc/fs.h b/stack/framework/inc/fs.h
+index 7b0a313..624830d 100644
+--- a/stack/framework/inc/fs.h
++++ b/stack/framework/inc/fs.h
+@@ -47,7 +47,7 @@
+ #endif
+ 
+ #ifndef FRAMEWORK_FS_PERMANENT_STORAGE_SIZE
+-#define FRAMEWORK_FS_PERMANENT_STORAGE_SIZE 2000
++#define FRAMEWORK_FS_PERMANENT_STORAGE_SIZE 2128
+ #endif
+ 
+ #ifndef FRAMEWORK_FS_VOLATILE_STORAGE_SIZE
+-- 
+2.7.4
+

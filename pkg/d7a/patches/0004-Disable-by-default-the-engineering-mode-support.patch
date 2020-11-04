@@ -1,7 +1,7 @@
-From aa583f7b8c4520ed5a7a1e6cf8a468945fb4d1da Mon Sep 17 00:00:00 2001
+From 9d89335c1d4eae174ed77c7932d8d8ffa36e16dd Mon Sep 17 00:00:00 2001
 From: Philippe Nunes <philippe.nunes@cortus.com>
 Date: Mon, 20 May 2019 14:34:21 +0200
-Subject: [PATCH 4/8] Disable by default the engineering mode support
+Subject: [PATCH 4/9] Disable by default the engineering mode support
 
 ---
  stack/modules/d7ap/CMakeLists.txt     | 2 +-

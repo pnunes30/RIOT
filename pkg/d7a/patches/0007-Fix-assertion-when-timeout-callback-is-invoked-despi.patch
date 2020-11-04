@@ -1,7 +1,7 @@
-From 932ac60634c57eebaa6e4bdb708367bebe11692b Mon Sep 17 00:00:00 2001
+From b9bae84cda71d39e26a15a3dea9dc3847f384066 Mon Sep 17 00:00:00 2001
 From: Philippe Nunes <philippe.nunes@cortus.com>
 Date: Fri, 26 Jul 2019 16:14:25 +0200
-Subject: [PATCH 7/8] Fix assertion when timeout callback is invoked despite
+Subject: [PATCH 7/9] Fix assertion when timeout callback is invoked despite
  the timer event has been cancelled.
 
 With RIOT, it is not possible to dismiss a posted IPC msg. However, it may happen that
@@ -27,7 +27,7 @@ index 842f498..43a92e4 100644
      assert(d7anp_state == D7ANP_STATE_FOREGROUND_SCAN || d7anp_state == D7ANP_STATE_TRANSMIT);
      DPRINT("Foreground scan expired @%i", timer_get_counter_value());
 diff --git a/stack/modules/d7ap/d7atp.c b/stack/modules/d7ap/d7atp.c
-index 05f630f..5669900 100644
+index 1df80c4..e00d2b7 100644
 --- a/stack/modules/d7ap/d7atp.c
 +++ b/stack/modules/d7ap/d7atp.c
 @@ -159,6 +159,9 @@ static void response_period_timeout_handler()

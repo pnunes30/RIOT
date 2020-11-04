@@ -1,7 +1,7 @@
-From dab02c71d60fabf684d0eaf0d1288b46741921f3 Mon Sep 17 00:00:00 2001
+From 887277c049365bcbe9400245534227038aa1a02f Mon Sep 17 00:00:00 2001
 From: Philippe Nunes <philippe.nunes@cortus.com>
 Date: Mon, 17 Jun 2019 14:50:32 +0200
-Subject: [PATCH 5/8] Set CMAKE_FIND_ROOT_PATH_MODE_PROGRAM to never
+Subject: [PATCH 5/9] Set CMAKE_FIND_ROOT_PATH_MODE_PROGRAM to never
 
 Only the host system roots will be searched for the programs
 ---

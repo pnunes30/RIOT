@@ -1,7 +1,7 @@
-From 6e4b01854038fbd119f75c17ccb390e0b67769ad Mon Sep 17 00:00:00 2001
+From a9856fc56fa5238f3a6a1ebd1f8c5266b59c8442 Mon Sep 17 00:00:00 2001
 From: Philippe Nunes <philippe.nunes@cortus.com>
 Date: Wed, 1 Aug 2018 12:56:09 +0200
-Subject: [PATCH 1/8] Remove auto generated headers dependencies
+Subject: [PATCH 1/9] Remove auto generated headers dependencies
 
 To build only the D7A module, we need to remove in the D7A module and
 in the framework headers all the includes of headers generated during the
@@ -50,7 +50,7 @@ index e37915c..351c39d 100644
  #if PLATFORM_NUM_DEBUGPINS > 0
      #define DEBUG_PIN_SET(pin) hw_debug_set(pin)
 diff --git a/stack/framework/hal/inc/hwradio.h b/stack/framework/hal/inc/hwradio.h
-index 175b310..0c79cfe 100644
+index 7c84410..4d55e30 100644
 --- a/stack/framework/hal/inc/hwradio.h
 +++ b/stack/framework/hal/inc/hwradio.h
 @@ -33,9 +33,7 @@
@@ -157,7 +157,7 @@ index e0791e5..e7def54 100644
   *
   * This value can be configured by setting the 'FRAMEWORK_TIMER_RESOLUTION' CMake property
 diff --git a/stack/fs/d7ap_fs_data.c b/stack/fs/d7ap_fs_data.c
-index b2368d9..0d93ae3 100644
+index b73195f..9a59b3f 100644
 --- a/stack/fs/d7ap_fs_data.c
 +++ b/stack/fs/d7ap_fs_data.c
 @@ -20,7 +20,6 @@

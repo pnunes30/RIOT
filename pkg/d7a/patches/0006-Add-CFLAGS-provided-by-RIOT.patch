@@ -1,7 +1,7 @@
-From a57f72e12049d2411de32f75f39021059b2b6df3 Mon Sep 17 00:00:00 2001
+From ac30a1b91c5c59b612a6522e7b5338235604d972 Mon Sep 17 00:00:00 2001
 From: Philippe Nunes <philippe.nunes@cortus.com>
 Date: Wed, 19 Jun 2019 10:04:05 +0200
-Subject: [PATCH 6/8] Add CFLAGS provided by RIOT
+Subject: [PATCH 6/9] Add CFLAGS provided by RIOT
 
 ---
  stack/CMakeLists.txt | 2 ++
