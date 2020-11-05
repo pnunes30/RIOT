@@ -789,7 +789,7 @@ void xcvr_set_bitrate(ciot25_xcvr_t *dev, uint32_t bps)
     else if (bps < 6400)
         rate_md = XCVR_BASEBAND_RX_CONFIG_DATA_RATE_MODE_64_32;
     else if (bps < 12500)
-        rate_md = XCVR_BASEBAND_RX_CONFIG_DATA_RATE_MODE_125_64;
+        rate_md = XCVR_BASEBAND_RX_CONFIG_DATA_RATE_MODE_250_125;
     else if (bps < 25000)
         rate_md = XCVR_BASEBAND_RX_CONFIG_DATA_RATE_MODE_250_125;
     else if (bps < 50000)
