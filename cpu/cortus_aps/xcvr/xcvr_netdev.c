@@ -66,6 +66,10 @@ void _on_xcvr_tx_interrupt(void *arg);
 void _on_data_if_rx_interrupt(void *arg);
 void _on_data_if_tx_interrupt(void *arg);
 
+#ifdef PLATFORM_USE_UART_FALLBACK
+static void uart_rx_cb(uint8_t data);
+#endif
+
 bool init_done = false;
 
 /* Netdev driver api functions */
@@ -75,6 +79,8 @@ static int _init(netdev_t *netdev);
 static void _isr(netdev_t *netdev);
 static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len);
 static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len);
+
+void xcvr_isr(netdev_t *dev, xcvr_flags_t flag);
 
 static int8_t rssi;
 
@@ -233,6 +239,16 @@ static int _send(netdev_t *netdev, const iolist_t *iolist)
 
     codec->packet_config = (codec->packet_config & XCVR_CODEC_PACKET_CONFIG_LEN_MASK) | XCVR_CODEC_PACKET_CONFIG_LEN_FIX;
 
+#ifdef PLATFORM_USE_UART_FALLBACK
+    xcvr_set_state(dev, XCVR_RF_TX_RUNNING);
+    memcpy((void*)dev->packet.buf, iolist->iol_base, size);
+    uint16_t crc = __builtin_bswap16(crc_calculate(dev->packet.buf, size));
+    memcpy(&dev->packet.buf[size], &crc, sizeof(uint16_t));
+    uart_send_bytes(dev->_internal.uart, dev->packet.buf, size + sizeof(uint16_t));
+    xcvr_isr((netdev_t *)dev, IRQ_XCVR_TX);
+    return 0;
+#endif
+
     if (size > XCVR_FIFO_MAX_SIZE)
     {
         dif->tx_thr = XCVR_DATA_IF_TX_THRESHOLD;
@@ -338,6 +354,13 @@ static int _init(netdev_t *netdev)
 
     /* Put chip into idle mode */
     xcvr_set_standby(ciot25_xcvr);
+
+#ifdef PLATFORM_USE_UART_FALLBACK
+    /* Initialise UART1 as the medium instead of RF, for communication easiness  */
+    ciot25_xcvr->_internal.uart = uart_init(0, PLATFORM_CONSOLE_BAUDRATE, PLATFORM_CONSOLE_LOCATION);
+    uart_set_rx_interrupt_callback(ciot25_xcvr->_internal.uart, uart_rx_cb);
+    uart_enable(ciot25_xcvr->_internal.uart);
+#endif
 
     // enable interrupt for the XCVR status and the FIFO level
     aps_irq[IRQ_XCVR_TX].ipl = 0;
@@ -774,6 +797,8 @@ void xcvr_isr(netdev_t *dev, xcvr_flags_t flag)
 
     ciot25_xcvr->irq_flags |= flag;
 
+    DEBUG("\n\rxcvr_isr! %d", ciot25_xcvr->irq_flags);
+
     if (dev->event_callback) {
         dev->event_callback(dev, NETDEV_EVENT_ISR);
     }
@@ -927,11 +952,18 @@ void _on_xcvr_tx_interrupt(void *arg)
 
     //timer_cancel_event(&dev->_internal.tx_timeout_timer);
 
-    if (xcvr->status & XCVR_TX_DONE_ENABLE ){
+#ifdef PLATFORM_USE_UART_FALLBACK
+    xcvr_set_standby(dev);
+    xcvr_set_state(dev, XCVR_RF_IDLE);
+    netdev->event_callback(netdev, NETDEV_EVENT_TX_COMPLETE);
+#else
+    if (xcvr->status & XCVR_TX_DONE_ENABLE )
+    {
         xcvr_set_standby(dev);
         xcvr_set_state(dev, XCVR_RF_IDLE);
         netdev->event_callback(netdev, NETDEV_EVENT_TX_COMPLETE);
     }
+#endif
 }
 
 void _on_xcvr_rx_interrupt(void *arg)
@@ -1091,3 +1123,29 @@ void _on_data_if_tx_interrupt(void *arg)
     else
         DEBUG("[xcvr] tx_status = %02x", dif->tx_status);
 }
+
+#ifdef PLATFORM_USE_UART_FALLBACK
+void uart_rx_cb(uint8_t data)
+{
+    ciot25_xcvr_t *dev = &xcvr_ressource.ciot25_xcvr;
+
+    dev->packet.buf[dev->packet.pos++] = data;
+
+    // Read status, read data and read status again
+    if (dev->packet.length == 0)
+    {
+        if (!(dev->options & XCVR_OPT_TELL_RX_END))
+            dev->packet.length = 2048;
+        else
+            dev->packet.length = dev->packet.buf[0] + 1;
+        //DEBUG("\n\rUART RX! %d", dev->packet.length);
+    }
+
+    if (dev->packet.pos == dev->packet.length)
+    {
+        //uart_rx_interrupt_disable(dev->_internal.uart); // keep UART always active
+        if (dev->settings.state == XCVR_RF_RX_RUNNING)
+            xcvr_isr((netdev_t *)dev, IRQ_XCVR_RX);
+    }
+}
+#endif

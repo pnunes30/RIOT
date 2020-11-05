@@ -436,6 +436,10 @@ void xcvr_set_standby(ciot25_xcvr_t *dev)
     counter1->mask = 0;
 #endif
 
+#ifdef PLATFORM_USE_UART_FALLBACK
+    uart_disable(dev->_internal.uart);
+#endif
+
     radio->tx_cfg &= ~XCVR_RADIO_TX_CONFIG_TRANSMISSION_ENABLE;
     xcvr_set_op_mode(dev, XCVR_OPMODE_STANDBY );
     xcvr_set_state(dev, XCVR_RF_IDLE);
@@ -513,6 +517,12 @@ void xcvr_set_rx(ciot25_xcvr_t *dev)
     /* wait startup time to take into account the PLL settling time?*/
 
     xcvr_set_state(dev, XCVR_RF_RX_RUNNING);
+
+#ifdef PLATFORM_USE_UART_FALLBACK
+    uart_enable(dev->_internal.uart);
+    uart_rx_interrupt_enable(dev->_internal.uart);
+    return;
+#endif
 
     // START RSSI
     baseband->rssi_config |= XCVR_BASEBAND_RSSI_CONFIG_MEASURE_PROCESSING_ON;

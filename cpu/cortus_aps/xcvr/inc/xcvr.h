@@ -26,6 +26,10 @@
 #include "d7a/timer.h"
 #include "net/netdev.h"
 
+#ifdef PLATFORM_USE_UART_FALLBACK
+#include "hwuart.h"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -153,6 +157,9 @@ typedef struct {
     /* Data that will be passed to events handler in application */
     timer_event tx_timeout_timer;         /**< TX operation timeout timer */
     timer_event rx_timeout_timer;         /**< RX operation timeout timer */
+#ifdef PLATFORM_USE_UART_FALLBACK
+    uart_handle_t  * uart;                /**< UART handle used in case of UART fallback */
+#endif
 } xcvr_internal_t;
 
 /**
